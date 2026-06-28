@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    @media print {
+        body * { visibility: hidden; }
+        #invoiceModal.active,
+        #invoiceModal.active * { visibility: visible; }
+        #invoiceModal.active { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 999999; }
+        #invoiceModal.active .invoice-actions { display: none !important; }
+        #invoiceModal.active .invoice-content { max-width: 100%; box-shadow: none; border-radius: 0; padding: 20px; }
+        .sidebar, .main-content, .page-section, .invoice-modal:not(.active) { display: none !important; }
+        @page { margin: 10mm; }
+    }
+</style>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+</head>
+<body class="dark">
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <img src="../static/images/full_logo.png" alt="Sublime's Logo" class="sidebar-logo-img">
+        </div>
+
+        <ul>
+            <li class="active" data-section="dashboard">
+                <i class="fa-solid fa-chart-simple sidebar-icon"></i>Dashboard</li>
+            <li data-section="inventory">
+                <i class="fa-solid fa-box sidebar-icon"></i>Inventario</li>
+            <li data-section="sales">
+                <i class="fa-solid fa-cart-shopping sidebar-icon"></i>Ventas</li>
+            <li data-section="orders">
+                <i class="fa-solid fa-truck sidebar-icon"></i>Pedidos</li>
+            <li data-section="clients">
+                <i class="fa-solid fa-users sidebar-icon"></i>Clientes</li>
+            <li data-section="invoices">
+                <i class="fa-solid fa-file-invoice-dollar sidebar-icon"></i>Facturas</li>
+            <li data-section="settings">
+                <i class="fa-solid fa-gear sidebar-icon"></i>Configuración</li>
+        </ul>
+
+        <a href="/" class="btn primary ver-tienda-btn" title="Ver Tienda">
+            <i class="fa-solid fa-store"></i> Ver Tienda
+        </a>
+
+        <div class="sidebar-footer">
+            <button class="btn-icon logout-btn-icon" id="logoutBtn" title="Cerrar Sesión">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+            <button class="btn-icon theme-toggle-btn" id="themeToggleBtn" title="Cambiar Tema">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar">
+
+            <h1 id="pageTitle">Bienvenido, Admin!</h1>
+
+            <div class="topbar-actions">
+            </div>
+
+        </div>
+
+        <!-- DASHBOARD -->
+        <section class="page-section active" id="dashboard">
+
+            <!-- STATS CARDS -->
+            <div class="cards dashboard-stats">
+                <div class="card stat-card">
+                    <div class="card-icon-wrapper sales-icon-bg">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-title">Ventas Totales</span>
+                        <h2 id="salesCount">0</h2>
+                    </div>
+                </div>
+                
+                <div class="card stat-card">
+                    <div class="card-icon-wrapper income-icon-bg">
+                        <i class="fa-solid fa-dollar-sign"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-title">Ingresos Totales</span>
+                        <h2 id="incomeValue">Bs 0,00</h2>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-icon-wrapper ticket-icon-bg">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-title">Ticket Promedio</span>
+                        <h2 id="avgTicketValue">Bs 0,00</h2>
+                    </div>
+                </div>
+
+                <div class="card stat-card">
+                    <div class="card-icon-wrapper pending-icon-bg">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-title">Pedidos Pendientes</span>
+                        <h2 id="pendingOrdersCount">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHARTS & DATA GRID -->
+            <div class="dashboard-grid">
+                
+                <!-- Left Column (Main Content) -->
+                <div class="dashboard-main-content" style="display: flex; flex-direction: column; gap: 24px;">
+                    
+                    <!-- Line Chart Box -->
+                    <div class="box chart-line-box">
+                        <h3>Gastos vs Ganancias</h3>
+                        <div class="chart-line">
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Orders Box -->
+                    <div class="box recent-orders-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-weight: 800; font-size: 1.15rem;">Últimos Pedidos Recibidos</h3>
+                            <button class="btn-outline" style="font-size: 0.8rem; padding: 6px 12px;" onclick="navigateToSection('orders')">Ver Todos</button>
+                        </div>
+                        <div class="table-card" style="box-shadow: none; border: none; padding: 0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>Fecha</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentOrdersTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; color: var(--muted); padding: 20px;">Cargando últimos pedidos...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column (Sidebar) -->
+                <div class="dashboard-sidebar">
+                    
+                    <!-- Quick Actions Box -->
+                    <div class="box quick-actions-box">
+                        <h3>Accesos Rápidos</h3>
+                        <div class="quick-actions-grid">
+                            <button class="quick-action-btn" onclick="navigateToSection('sales')">
+                                <i class="fa-solid fa-cart-plus"></i> Nueva Venta
+                            </button>
+                            <button class="quick-action-btn" onclick="document.getElementById('openProductModal').click()">
+                                <i class="fa-solid fa-plus"></i> Producto
+                            </button>
+                            <button class="quick-action-btn" onclick="document.getElementById('openClientModal').click()">
+                                <i class="fa-solid fa-user-plus"></i> Cliente
+                            </button>
+                            <button class="quick-action-btn" onclick="navigateToSection('invoices'); document.getElementById('generateReportBtn').click()">
+                                <i class="fa-solid fa-file-export"></i> Reporte
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Donut Chart Box -->
+                    <div class="box inventory-box">
+                        <h3>Stock por Categoría</h3>
+                        <div class="chart-donut">
+                            <canvas id="donutChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Products Box -->
+                    <div class="box products-box">
+                        <h3>Top 10 Productos por Ventas</h3>
+                        <div class="loading-top-products">
+                            <p>Cargando productos...</p>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock Alerts Box -->
+                    <div class="box low-stock-box">
+                        <h3>Alertas de Reabastecimiento</h3>
+                        <div id="lowStockList" class="low-stock-list">
+                            <p style="color: var(--muted); font-size: 0.85rem;">Cargando alertas de stock...</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- INVENTARIO -->
+        <section class="page-section" id="inventory">
+
+            <div class="page-header">
+                <div>
+                    <p>
+                        Gestiona tus productos, categorías y niveles de stock.
+                    </p>
+                </div>
+
+                <button class="btn secondary" id="openMateriaPrimaModal">
+                    <i class="fa-solid fa-plus"></i> Agregar Materia Prima
+                </button>
+
+                <button class="btn secondary" id="openProductModal" style="display: none;">
+                    <i class="fa-solid fa-plus"></i> Agregar Producto
+                </button>
+
+            </div>
+
+            <div class="sub-tabs-container">
+                <button class="sub-tab-btn active" id="subtabMateriaPrima">
+                    <i class="fa-solid fa-boxes-stacked"></i> Materia Prima
+                </button>
+                <button class="sub-tab-btn" id="subtabPersonalizado">
+                    <i class="fa-solid fa-palette"></i> Personalizado
+                </button>
+            </div>
+
+            <div class="filter-row">
+                <input type="search" id="inventorySearchInput" placeholder="Buscar productos..." />
+            </div>
+
+            <div class="table-card" id="materiaPrimaTableContainer">
+
+                <table class="data-table">
+
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Categoría (Detalles)</th>
+                            <th>Unidades</th>
+                            <th>Tasa</th>
+                            <th>P. Unitario</th>
+                            <th>IVA</th>
+                            <th>Subtotal</th>
+                            <th>Personalizado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="materiaPrimaTableBody">
+                        <tr>
+                            <td colspan="9">Cargando materia prima...</td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="table-card" id="personalizadoTableContainer" style="display: none;">
+
+                <table class="data-table">
+
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="personalizadoTableBody">
+                        <tr>
+                            <td colspan="5">Cargando productos...</td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- VENTAS -->
+        <section class="page-section" id="sales">
+
+            <div class="page-header">
+
+                <div>
+                    <p>
+                        Procesa ventas, selecciona clientes y revisa el carrito.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="row-2 sales-grid">
+
+                <div class="box sales-box">
+
+                    <label>Cliente</label>
+
+                    <select id="salesClientSelect">
+                        <option value="">Seleccionar cliente...</option>
+                    </select>
+
+                    <label>Productos</label>
+
+                    <div class="product-cards" id="productCardsContainer">
+
+                        <div class="product-card">
+                            <strong>Cargando productos...</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="box cart-box">
+
+                    <h3>Carrito</h3>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;" id="cartClientLabel">Seleccione un cliente</div>
+
+                    <div id="cartContent">
+                        <p>Seleccione un producto para agregar al carrito.</p>
+                    </div>
+
+                    <div id="cartFooter" style="display:none; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;">
+                            <span>Total:</span>
+                            <span id="cartTotal">Bs 0,00</span>
+                        </div>
+                        <button type="button" class="btn-primary" id="generateInvoiceBtn" style="width:100%; padding: 12px; border-radius: 10px; font-weight: 700;">
+                            <i class="fa-solid fa-receipt"></i> Generar Factura
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- PEDIDOS ONLINE -->
+        <section class="page-section" id="orders">
+            <div class="page-header">
+                <div>
+                    <p>Gestiona los pedidos online: verifica pagos y actualiza estados.</p>
+                </div>
+            </div>
+
+            <div class="orders-bulk-actions" id="ordersBulkActions" style="display: none; align-items: center; justify-content: space-between; padding: 12px 20px; background: rgba(255, 65, 108, 0.1); border: 1px solid rgba(255, 65, 108, 0.25); border-radius: 12px; margin-bottom: 20px;">
+                <span style="font-weight: 600; color: var(--text);"><span id="selectedOrdersCount">0</span> pedidos seleccionados</span>
+                <button class="btn" id="deleteSelectedOrdersBtn" style="background: var(--btn-red-grad) !important; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-trash"></i> Eliminar Seleccionados
+                </button>
+            </div>
+
+            <div class="card-grid" id="ordersList">
+                <div class="client-card"><h3>Cargando pedidos...</h3></div>
+            </div>
+        </section>
+
+        <!-- CLIENTES -->
+        <section class="page-section" id="clients">
+
+            <div class="page-header">
+
+                <div>
+                    <p>
+                        Gestiona tu base de clientes y agrega nuevos contactos.
+                    </p>
+                </div>
+
+                <button class="btn secondary" id="openClientModal">
+                    <i class="fa-solid fa-user-plus"></i> Agregar Cliente
+                </button>
+
+            </div>
+
+            <div class="filter-row">
+                <input type="search" placeholder="Buscar clientes..." />
+            </div>
+
+            <div class="card-grid" id="clientsList">
+
+                <div class="client-card">
+
+                    <div class="client-avatar">C</div>
+
+                    <div>
+                        <h3>Cargando clientes...</h3>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- FACTURAS -->
+        <section class="page-section" id="invoices">
+
+            <div class="page-header">
+
+                <div>
+                    <p>
+                        Revisa y descarga las facturas de ventas más recientes.
+                    </p>
+                </div>
+
+                <button type="button" class="btn-primary" id="generateReportBtn" style="padding: 10px 20px; border-radius: 10px; font-weight: 700;">
+                    <i class="fa-solid fa-file-export"></i> Generar Reporte
+                </button>
+
+            </div>
+
+            <div class="filter-row">
+                <input type="search" placeholder="Buscar por número o cliente..." />
+            </div>
+
+            <div class="table-card">
+
+                <table class="data-table">
+
+                    <thead>
+                        <tr>
+                            <th>N° Factura</th>
+                            <th>Cliente</th>
+                            <th>Fecha</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="invoicesTableBody">
+                        <tr>
+                            <td colspan="6">Cargando facturas...</td>
+                        </tr>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        <!-- CONFIGURACIÓN -->
+        <section class="page-section" id="settings">
+
+            <div class="page-header">
+
+                <div>
+                    <p>
+                        Administra las preferencias del sistema y la seguridad.
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- TABS -->
+            <div class="settings-tabs">
+
+                <button class="tab-button active settings-tab-button"
+                        data-config="general">
+
+                    General
+
+                </button>
+
+                <button class="tab-button settings-tab-button"
+                        data-config="seguridad">
+
+                    Seguridad
+
+                </button>
+
+                <button class="tab-button settings-tab-button"
+                        data-config="usuarios">
+
+                    Usuarios
+
+                </button>
+
+                <button class="tab-button settings-tab-button"
+                        data-config="historial">
+
+                    Historial
+
+                </button>
+
+            </div>
+
+            <!-- CONTENIDO -->
+            <div class="settings-content">
+
+                <!-- GENERAL -->
+                <div class="settings-panel active" id="general">
+
+                    <!-- TASAS DE CAMBIO BCV -->
+                    <div class="box settings-card">
+                        <h3><i class="fas fa-exchange-alt"></i> Tasas de Cambio BCV</h3>
+                        <p>Configura las tasas de cambio usadas en la tienda</p>
+
+                        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:15px;">
+                            <div style="flex:1;min-width:180px;">
+                                <label style="display:block;margin-bottom:5px;color:#aaa;">🇺🇸 USD (Bs por $1)</label>
+                                <input type="number" id="usdRate" step="0.0001" placeholder="Ej: 40.00" style="width:100%;">
+                            </div>
+                            <div style="flex:1;min-width:180px;">
+                                <label style="display:block;margin-bottom:5px;color:#aaa;">🇪🇺 EUR (Bs por €1)</label>
+                                <input type="number" id="eurRate" step="0.0001" placeholder="Ej: 45.00" style="width:100%;">
+                            </div>
+                        </div>
+
+                        <div id="bcvInfo" style="background:rgba(0,255,128,0.05);border:1px solid rgba(0,255,128,0.1);border-radius:8px;padding:12px;margin-bottom:15px;display:none;">
+                            <small style="color:#00ff80;">📡 Última tasa BCV obtenida</small><br>
+                            <span id="bcvUsdDisplay" style="color:#fff;font-weight:600;"></span>
+                            <span style="color:#888;margin:0 8px;">|</span>
+                            <span id="bcvEurDisplay" style="color:#fff;font-weight:600;"></span>
+                            <span style="color:#888;margin:0 8px;">|</span>
+                            <span id="bcvDate" style="color:#888;font-size:0.85rem;"></span>
+                        </div>
+
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <button class="btn secondary" id="fetchBcvRate" style="display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-cloud-download-alt"></i> Obtener tasa del BCV
+                            </button>
+                            <button class="btn primary" id="saveUsdRate" style="display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-save"></i> Guardar tasas
+                            </button>
+                        </div>
+                    </div>
+
+
+
+                </div>
+
+                <!-- SEGURIDAD -->
+                <div class="settings-panel" id="seguridad">
+
+                    <div class="box settings-card">
+
+                        <h3>
+                            Cambiar Contraseña
+                        </h3>
+
+                        <label>
+                            Contraseña Actual
+                        </label>
+
+                        <input type="password"
+                            placeholder="Contraseña actual" />
+
+                        <label>
+                            Nueva Contraseña
+                        </label>
+
+                        <input type="password"
+                            placeholder="Nueva contraseña" />
+
+                        <label>
+                            Confirmar Nueva Contraseña
+                        </label>
+
+                        <input type="password"
+                            placeholder="Confirmar contraseña" />
+
+                        <button class="btn secondary">
+                            Actualizar Contraseña
+                        </button>
+
+                    </div>
+
+                    <div class="box settings-card">
+
+                        <h3>
+                            Cambiar Correo Electrónico
+                        </h3>
+
+                        <label>
+                            Correo Actual
+                        </label>
+
+                        <input type="email"
+                            value="admin@sublime.com"
+                            readonly />
+
+                        <label>
+                            Nuevo Correo Electrónico
+                        </label>
+
+                        <input type="email"
+                            placeholder="Nuevo correo" />
+
+                        <button class="btn secondary">
+                            Actualizar Correo
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <!-- USUARIOS -->
+                <div class="settings-panel" id="usuarios">
+
+                    <div class="box settings-card">
+
+                        <h3>
+                            Crear Usuario Trabajador
+                        </h3>
+
+                        <label>
+                            Nombre Completo
+                        </label>
+
+                        <input type="text"
+                            placeholder="Nombre completo" />
+
+                        <label>
+                            Correo Electrónico
+                        </label>
+
+                        <input type="email"
+                            placeholder="Correo electrónico" />
+
+                        <label>
+                            Contraseña
+                        </label>
+
+                        <input type="password"
+                            placeholder="Contraseña" />
+
+                        <button class="btn secondary">
+                            Crear Usuario
+                        </button>
+
+                    </div>
+
+                    <div class="box settings-card">
+
+                        <h3>
+                            Usuarios Trabajadores
+                        </h3>
+
+                        <table class="data-table">
+
+                            <thead>
+
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Rol</th>
+                                    <th>Fecha Creación</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr>
+                                    <td>Juan Pérez</td>
+                                    <td>juan@sublime.com</td>
+                                    <td>Trabajador</td>
+                                    <td>2026-01-15</td>
+                                </tr>
+
+                                <tr>
+                                    <td>María García</td>
+                                    <td>maria@sublime.com</td>
+                                    <td>Trabajador</td>
+                                    <td>2026-02-20</td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+                <!-- HISTORIAL -->
+                <div class="settings-panel" id="historial">
+
+                    <div class="box settings-card">
+
+                        <h3>
+                            Historial de Inicio de Sesión
+                        </h3>
+
+                        <table class="data-table">
+
+                            <thead>
+
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Correo</th>
+                                    <th>Fecha y Hora</th>
+                                    <th>Dirección IP</th>
+                                    <th>Estado</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <tr>
+                                    <td>Administrador</td>
+                                    <td>admin@sublime.com</td>
+                                    <td>2026-04-27 09:30</td>
+                                    <td>192.168.1.100</td>
+                                    <td>Exitoso</td>
+                                </tr>
+
+                                <tr>
+                                    <td>Juan Pérez</td>
+                                    <td>juan@sublime.com</td>
+                                    <td>2026-04-27 08:15</td>
+                                    <td>192.168.1.101</td>
+                                    <td>Exitoso</td>
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+
+</div>
+
+<!-- =========================
+     MODAL GENERAR REPORTE
+========================= -->
+
+<div class="report-modal" id="modal">
+
+    <div class="report-modal-content">
+
+        <!-- HEADER -->
+        <div class="report-header">
+
+            <div>
+
+                <h2>
+                    Generar Reporte de Ventas
+                </h2>
+
+                <p>
+                    Selecciona el tipo de reporte y formato que deseas generar
+                </p>
+
+            </div>
+
+            <span class="close-modal" id="closeModal">
+                &times;
+            </span>
+
+        </div>
+
+        <!-- TIPO -->
+        <div class="report-group">
+
+            <label>
+                Tipo de Reporte
+            </label>
+
+            <select id="tipoReporte">
+
+                <option value="mensual">
+                    Mensual
+                </option>
+
+                <option value="diario">
+                    Diario
+                </option>
+
+                <option value="anual">
+                    Anual
+                </option>
+
+                <option value="semanal">
+                    Semanal
+                </option>
+
+                <option value="personalizado">
+                    Personalizado
+                </option>
+
+            </select>
+
+        </div>
+
+        <!-- FORMATO -->
+        <div class="report-group">
+
+            <label>
+                Formato
+            </label>
+
+            <select id="formato">
+
+                <option value="pdf">
+                    PDF
+                </option>
+
+                <option value="excel">
+                    Excel
+                </option>
+
+            </select>
+
+        </div>
+
+        <!-- INFO -->
+        <div class="report-info">
+
+            <div class="report-icon">
+                📅
+            </div>
+
+            <div>
+
+                <h4 id="reportTitle">
+                    Reporte Mensual
+                </h4>
+
+                <p id="descripcion">
+
+                    Incluirá: métricas generales,
+                    top productos,
+                    ventas detalladas
+                    y análisis de inventario
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- BOTONES -->
+        <div class="report-actions">
+
+            <button id="cancelar" class="btn-cancel">
+                Cancelar
+            </button>
+
+            <button id="descargar" class="btn-download">
+                ⬇ Descargar
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =========================
+     MODAL AGREGAR PRODUCTO
+========================= -->
+
+<div class="product-modal" id="productModal">
+
+    <div class="product-modal-content">
+
+        <!-- HEADER -->
+        <div class="product-header">
+
+            <h2>Agregar Producto</h2>
+
+            <span class="close-product-modal" id="closeProductModal">
+                &times;
+            </span>
+
+        </div>
+
+        <!-- FORMULARIO -->
+        <form id="productForm">
+
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Nombre del Producto</label>
+                    <input type="text"
+                           id="productName"
+                           placeholder="Ej: Franela Negra"
+                           required>
+                </div>
+
+                <div class="product-group">
+                    <label>Categoría</label>
+                    <select id="productCategory" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="">Seleccionar...</option>
+                        <option value="Termos">Termos</option>
+                        <option value="Mousepads">Mousepads</option>
+                        <option value="Boligrafos">Bolígrafos</option>
+                        <option value="camisas">Camisas</option>
+                        <option value="tazas">Tazas</option>
+                        <option value="gorras">Gorras</option>
+                        <option value="llaveros">Llaveros</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="product-row-3col">
+                <div class="product-group">
+                    <label>Precio en Dólares ($)</label>
+                    <input type="number"
+                           id="productPrice"
+                           placeholder="0.00"
+                           step="0.01"
+                           required>
+                </div>
+
+                <div class="product-group">
+                    <label>Precio en Bolívares (Bs)</label>
+                    <input type="number"
+                           id="productPriceBs"
+                           placeholder="0.00"
+                           step="0.01">
+                </div>
+
+                <div class="product-group">
+                    <label>Porcentaje de IVA (%)</label>
+                    <input type="number"
+                           id="productIva"
+                           placeholder="16"
+                           value="16"
+                           min="0"
+                           max="100"
+                           required>
+                </div>
+            </div>
+
+            <!-- Dynamic calculation display -->
+            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose de Precios (Con IVA)</span>
+                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">$<span id="calcBaseUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="calcIvaPctUsd">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+$<span id="calcIvaUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total USD:</span>
+                            <span style="font-weight: 800; color: var(--primary);">$<span id="calcTotalUsd">0.00</span></span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">Bs <span id="calcBaseBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="calcIvaPctBs">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="calcIvaBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total VES:</span>
+                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="calcTotalBs">0.00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Stock</label>
+                    <input type="number"
+                           id="productStock"
+                           placeholder="0"
+                           required>
+                </div>
+
+                <div class="product-group">
+                    <label>Imagen del Producto</label>
+                    <label for="productImagen" class="file-upload-label">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar archivo
+                    </label>
+                    <input type="file"
+                           id="productImagen"
+                           accept="image/*"
+                           style="display: none;">
+                    <span id="productImagenName" class="file-name-display">Ningún archivo seleccionado</span>
+                </div>
+            </div>
+
+            <div class="product-group">
+                <label>Descripción</label>
+                <textarea id="productDescription"
+                          placeholder="Descripción del producto"></textarea>
+            </div>
+
+            <!-- BOTONES -->
+            <div class="product-actions">
+
+                <button type="button"
+                        class="btn-cancel-product"
+                        id="cancelProduct">
+
+                    Cancelar
+
+                </button>
+
+                <button type="submit"
+                        class="btn-save-product">
+
+                    Guardar Producto
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- =========================
+     MODALS MATERIA PRIMA
+========================= -->
+
+<!-- AGREGAR MATERIA PRIMA -->
+<div class="product-modal" id="materiaPrimaModal">
+    <div class="product-modal-content">
+        <div class="product-header">
+            <h2>Agregar Materia Prima</h2>
+            <span class="close-product-modal" id="closeMateriaPrimaModal">&times;</span>
+        </div>
+
+        <form id="materiaPrimaForm">
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Fecha</label>
+                    <input type="date" id="materiaFecha" required>
+                </div>
+                <div class="product-group">
+                    <label>Categoría</label>
+                    <select id="materiaCategoria" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="">Seleccionar...</option>
+                        <option value="Camisas">Camisas</option>
+                        <option value="Tazas">Tazas</option>
+                        <option value="Gorras">Gorras</option>
+                        <option value="Mousepads">Mousepads</option>
+                        <option value="Llaveros">Llaveros</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Condicional para Camisas (Talla y Grupo de edad) -->
+            <div class="product-row" id="materiaCamisaExtra" style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
+                <div class="product-group">
+                    <label>Talla</label>
+                    <select id="materiaTalla" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                    </select>
+                </div>
+                <div class="product-group">
+                    <label>Grupo de Edad</label>
+                    <select id="materiaGrupoEdad" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="Niño/Niña">Niño/Niña</option>
+                        <option value="Adolescente">Adolescente</option>
+                        <option value="Adulto">Adulto</option>
+                        <option value="Mayor de edad">Mayor de edad</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="product-row-3col">
+                <div class="product-group">
+                    <label>Unidades</label>
+                    <input type="number" id="materiaUnidades" placeholder="0" min="1" required>
+                </div>
+                <div class="product-group">
+                    <label>Tasa de Cambio (Bs)</label>
+                    <input type="number" id="materiaTasa" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="product-group">
+                    <label>P. Unitario ($)</label>
+                    <input type="number" id="materiaPrecioUnitario" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Porcentaje de IVA (%)</label>
+                    <input type="number" id="materiaIva" placeholder="16" value="16" min="0" max="100" required>
+                </div>
+                <div class="product-group">
+                    <label>Personalizado (Ref / Notas)</label>
+                    <input type="text" id="materiaPersonalizado" placeholder="Ej: Pedido Especial #102">
+                </div>
+            </div>
+
+            <!-- Desglose de Subtotal -->
+            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal de Compra (Con IVA)</span>
+                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">$<span id="materiaCalcBaseUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="materiaCalcIvaPctUsd">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+$<span id="materiaCalcIvaUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total USD:</span>
+                            <span style="font-weight: 800; color: var(--primary);">$<span id="materiaCalcTotalUsd">0.00</span></span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">Bs <span id="materiaCalcBaseBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="materiaCalcIvaPctBs">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="materiaCalcIvaBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total VES:</span>
+                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="materiaCalcTotalBs">0.00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-actions">
+                <button type="button" class="btn-cancel-product" id="cancelMateriaPrima">Cancelar</button>
+                <button type="submit" class="btn-save-product">Guardar Materia Prima</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDITAR MATERIA PRIMA -->
+<div class="edit-modal" id="editMateriaPrimaModal">
+    <div class="edit-modal-content">
+        <div class="product-header">
+            <h2>Editar Materia Prima</h2>
+            <span class="close-product-modal" id="closeEditMateriaPrimaModal">&times;</span>
+        </div>
+
+        <form id="editMateriaPrimaForm">
+            <input type="hidden" id="editMateriaId">
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Fecha</label>
+                    <input type="date" id="editMateriaFecha" required>
+                </div>
+                <div class="product-group">
+                    <label>Categoría</label>
+                    <select id="editMateriaCategoria" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="Camisas">Camisas</option>
+                        <option value="Tazas">Tazas</option>
+                        <option value="Gorras">Gorras</option>
+                        <option value="Mousepads">Mousepads</option>
+                        <option value="Llaveros">Llaveros</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Condicional para Camisas (Talla y Grupo de edad) -->
+            <div class="product-row" id="editMateriaCamisaExtra" style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
+                <div class="product-group">
+                    <label>Talla</label>
+                    <select id="editMateriaTalla" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                    </select>
+                </div>
+                <div class="product-group">
+                    <label>Grupo de Edad</label>
+                    <select id="editMateriaGrupoEdad" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                        <option value="Niño/Niña">Niño/Niña</option>
+                        <option value="Adolescente">Adolescente</option>
+                        <option value="Adulto">Adulto</option>
+                        <option value="Mayor de edad">Mayor de edad</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="product-row-3col">
+                <div class="product-group">
+                    <label>Unidades</label>
+                    <input type="number" id="editMateriaUnidades" placeholder="0" min="1" required>
+                </div>
+                <div class="product-group">
+                    <label>Tasa de Cambio (Bs)</label>
+                    <input type="number" id="editMateriaTasa" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="product-group">
+                    <label>P. Unitario ($)</label>
+                    <input type="number" id="editMateriaPrecioUnitario" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+
+            <div class="product-row">
+                <div class="product-group">
+                    <label>Porcentaje de IVA (%)</label>
+                    <input type="number" id="editMateriaIva" placeholder="16" min="0" max="100" required>
+                </div>
+                <div class="product-group">
+                    <label>Personalizado (Ref / Notas)</label>
+                    <input type="text" id="editMateriaPersonalizado" placeholder="Ej: Pedido Especial #102">
+                </div>
+            </div>
+
+            <!-- Desglose de Subtotal -->
+            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal de Compra (Con IVA)</span>
+                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">$<span id="editMateriaCalcBaseUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="editMateriaCalcIvaPctUsd">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+$<span id="editMateriaCalcIvaUsd">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total USD:</span>
+                            <span style="font-weight: 800; color: var(--primary);">$<span id="editMateriaCalcTotalUsd">0.00</span></span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>Base:</span>
+                            <span style="font-weight: 600;">Bs <span id="editMateriaCalcBaseBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>IVA (<span id="editMateriaCalcIvaPctBs">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="editMateriaCalcIvaBs">0.00</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                            <span style="font-weight: 700;">Total VES:</span>
+                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="editMateriaCalcTotalBs">0.00</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-actions">
+                <button type="button" class="btn-cancel-product" id="cancelEditMateriaPrima">Cancelar</button>
+                <button type="submit" class="btn-save-product" id="saveEditMateriaPrimaBtn">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================
+     MODAL AGREGAR CLIENTE
+========================= -->
+
+<div id="clientModal" class="client-modal">
+
+    <div class="client-modal-content">
+
+        <!-- HEADER -->
+        <div class="client-header">
+
+            <h2>Agregar Cliente</h2>
+
+            <span class="close-client-modal" id="closeClientModal">
+                &times;
+            </span>
+
+        </div>
+
+        <!-- FORM -->
+        <form id="clientForm">
+
+            <div class="client-group">
+
+                <label>Nombre</label>
+
+                <input type="text"
+                       id="clientName"
+                       required>
+
+            </div>
+
+            <div class="client-group">
+
+                <label>Email</label>
+
+                <input type="email"
+                       id="clientEmail"
+                       required>
+
+            </div>
+
+            <div class="client-group">
+
+                <label>Teléfono</label>
+
+                <input type="text"
+                       id="clientPhone">
+
+            </div>
+
+            <div class="client-group">
+
+                <label>Dirección</label>
+
+                <input type="text"
+                       id="clientAddress">
+
+            </div>
+
+            <!-- BOTONES -->
+            <div class="client-actions">
+
+                <button type="button"
+                        class="btn-cancel-client"
+                        id="cancelClient">
+
+                    Cancelar
+
+                </button>
+
+                <button type="submit"
+                        class="btn-save-client">
+
+                    Guardar Cliente
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- MODAL EDITAR PRODUCTO -->
+
+<div id="editProductModal" class="edit-modal">
+
+    <div class="edit-modal-content">
+
+        <h2>Editar Producto</h2>
+
+        <input type="hidden" id="editId">
+
+        <div class="product-row">
+            <div class="product-group">
+                <label>Nombre</label>
+                <input
+                    type="text"
+                    id="editNombre"
+                    placeholder="Nombre del producto">
+            </div>
+
+            <div class="product-group">
+                <label>Categoría</label>
+                <select id="editCategoria" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                    <option value="Termos">Termos</option>
+                    <option value="Mousepads">Mousepads</option>
+                    <option value="Boligrafos">Bolígrafos</option>
+                    <option value="camisas">Camisas</option>
+                    <option value="tazas">Tazas</option>
+                    <option value="gorras">Gorras</option>
+                    <option value="llaveros">Llaveros</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="product-row-3col">
+            <div class="product-group">
+                <label>Precio en Dólares ($)</label>
+                <input
+                    type="number"
+                    id="editPrecio"
+                    step="0.01">
+            </div>
+
+            <div class="product-group">
+                <label>Precio en Bolívares (Bs)</label>
+                <input
+                    type="number"
+                    id="editPrecioBs"
+                    step="0.01">
+            </div>
+
+            <div class="product-group">
+                <label>Porcentaje de IVA (%)</label>
+                <input
+                    type="number"
+                    id="editIva"
+                    placeholder="16"
+                    min="0"
+                    max="100">
+            </div>
+        </div>
+
+        <!-- Dynamic calculation display for edit -->
+        <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose de Precios (Con IVA)</span>
+                <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                    <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Base:</span>
+                        <span style="font-weight: 600;">$<span id="editCalcBaseUsd">0.00</span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>IVA (<span id="editCalcIvaPctUsd">16.00</span>%):</span>
+                        <span style="color: #ffb700; font-weight: 600;">+$<span id="editCalcIvaUsd">0.00</span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                        <span style="font-weight: 700;">Total USD:</span>
+                        <span style="font-weight: 800; color: var(--primary);">$<span id="editCalcTotalUsd">0.00</span></span>
+                    </div>
+                </div>
+                <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                    <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Base:</span>
+                        <span style="font-weight: 600;">Bs <span id="editCalcBaseBs">0.00</span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>IVA (<span id="editCalcIvaPctBs">16.00</span>%):</span>
+                        <span style="color: #ffb700; font-weight: 600;">+Bs <span id="editCalcIvaBs">0.00</span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                        <span style="font-weight: 700;">Total VES:</span>
+                        <span style="font-weight: 800; color: var(--primary);">Bs <span id="editCalcTotalBs">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="product-row">
+            <div class="product-group">
+                <label>Stock</label>
+                <input
+                    type="number"
+                    id="editStock">
+            </div>
+
+            <div class="product-group">
+                <label>Imagen del Producto</label>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;" id="editImagenActual"></div>
+                <label for="editImagen" class="file-upload-label">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar archivo
+                </label>
+                <input
+                    type="file"
+                    id="editImagen"
+                    accept="image/*"
+                    style="display: none;">
+                <span id="editImagenName" class="file-name-display">Ningún archivo seleccionado</span>
+            </div>
+        </div>
+
+        <div class="product-group">
+            <label>Descripción</label>
+            <textarea
+                id="editDescripcion"
+                placeholder="Descripción del producto"></textarea>
+        </div>
+
+        <div class="edit-actions">
+
+            <button
+                id="saveEditBtn"
+                class="save-btn">
+
+                Guardar
+
+            </button>
+
+            <button
+                id="cancelEditBtn"
+                class="cancel-btn">
+
+                Cancelar
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- MODAL FACTURA -->
+
+<div id="invoiceModal" class="invoice-modal">
+
+    <div class="invoice-content">
+
+        <div id="invoiceContainer">
+
+            <div class="invoice-header">
+
+                <div>
+                    <h1 class="brand">SUBLIME</h1>
+                    <p>Sistema de Ventas</p>
+                </div>
+
+                <div class="invoice-title">
+                    <h1>FACTURA</h1>
+                    <p id="invoiceNumber">INV-001</p>
+                </div>
+
+            </div>
+
+            <div class="invoice-info">
+
+                <div>
+                    <h3>Facturado a:</h3>
+                    <p id="invoiceClient">Cliente</p>
+                </div>
+
+                <div>
+                    <h3>Fecha:</h3>
+                    <p id="invoiceDate">01/01/2026</p>
+                </div>
+
+            </div>
+
+            <table class="invoice-table">
+
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unit.</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+
+                <tbody id="invoiceItems">
+                </tbody>
+
+            </table>
+
+            <div class="invoice-sumanry">
+                <p>
+                    Subtotal:
+                    <span id="invoiceSubtotal">$0.00</span>
+                </p>
+                <p>
+                    IVA:
+                    <span id="invoiceIVA">$0.00</span>
+                </p>
+                <h3>
+                    Total:
+                    <span id="invoiceTotal">$0.00</span>
+                </h3>
+            </div>
+
+        </div>
+
+        <div class="invoice-actions">
+
+            <button id="downloadInvoiceBtn">
+
+                Descargar
+
+            </button>
+
+            <button id="printInvoiceBtn">
+
+                Imprimir
+
+            </button>
+
+            <button id="closeInvoiceBtn">
+
+                Cerrar
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="reportModal" class="client-modal">
+
+    <div class="client-modal-content" style="max-width: 500px;">
+
+        <h2>Generar Reporte</h2>
+
+        <label>Tipo de Reporte</label>
+        <select id="reportType" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
+            <option value="daily">Diario</option>
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+            <option value="annual">Anual</option>
+            <option value="custom">Personalizado</option>
+        </select>
+
+        <div id="reportDateRange" style="display:none;">
+            <label>Desde</label>
+            <input type="date" id="reportDateFrom" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:10px;">
+            <label>Hasta</label>
+            <input type="date" id="reportDateTo" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
+        </div>
+
+        <label>Formato de Exportación</label>
+        <select id="reportFormat" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:20px;">
+            <option value="pdf">PDF (vista para imprimir)</option>
+            <option value="excel">Excel (CSV)</option>
+        </select>
+
+        <div class="client-modal-actions">
+            <button id="generateReportAction">Generar</button>
+            <button id="cancelReportBtn">Cancelar</button>
+        </div>
+
+    </div>
+
+</div>
+
+<div id="editClientModal" class="client-modal">
+
+    <div class="client-modal-content">
+
+        <h2>Editar Cliente</h2>
+
+        <input type="hidden" id="editClientId">
+
+        <label>Nombre</label>
+        <input type="text" id="editClientName">
+
+        <label>Correo</label>
+        <input type="email" id="editClientEmail">
+
+        <label>Teléfono</label>
+        <input type="text" id="editClientPhone">
+
+        <label>Dirección</label>
+        <input type="text" id="editClientAddress">
+
+        <div class="client-modal-actions">
+
+            <button id="saveClientBtn">
+
+                Guardar
+
+            </button>
+
+            <button id="cancelClientBtn">
+
+                Cancelar
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="toastContainer"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
