@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+
+    <!-- Header del perfil -->
+    <div class="profile-hero reveal">
+        <div class="profile-avatar">
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="profile-hero-info">
+            <h1 class="hero-title-solid" style="font-size: 2.2rem; margin-bottom: 5px;">{{ user.username }}</h1>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <p style="color: var(--text-muted); margin: 0;"><i class="fa-solid fa-envelope"></i> <span style="font-weight: 600;">{{ user.email or 'Sin correo registrado' }}</span></p>
+                {% if user.phone %}<p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;"><i class="fa-solid fa-phone"></i> {{ user.phone }}</p>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-grid">
+
+        <!-- Panel izquierdo: edición de datos -->
+        <div class="profile-left">
+
+            <!-- Datos de la cuenta -->
+            <div class="profile-card reveal">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-id-card"></i>
+                    <h2>Datos de la Cuenta</h2>
+                </div>
+                <div class="profile-form">
+                    <div class="form-group">
+                        <label>Nombre de usuario</label>
+                        <input type="text" value="{{ user.username }}" disabled class="input-disabled">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo electrónico</label>
+                        <input type="text" value="{{ user.email or 'Sin correo' }}" disabled class="input-disabled">
+                    </div>
+                    {% if user.phone %}
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" value="{{ user.phone }}" disabled class="input-disabled">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Cambiar Contraseña -->
+            <div class="profile-card reveal">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-lock"></i>
+                    <h2>Cambiar Contraseña</h2>
+                </div>
+                <form method="POST" action="{{ url_for('perfil') }}" class="profile-form" autocomplete="off">
+                    <input type="hidden" name="action" value="cambiar_password">
+                    <div class="form-group">
+                        <label>Contraseña actual</label>
+                        <input type="password" name="current_password" placeholder="••••••••" required autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Nueva contraseña</label>
+                        <input type="password" name="new_password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmar nueva contraseña</label>
+                        <input type="password" name="confirm_password" placeholder="Repite la nueva contraseña" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn-primary profile-btn">
+                        <i class="fa-solid fa-key"></i> Actualizar contraseña
+                    </button>
+                </form>
+            </div>
+
+            <!-- Cambiar Correo -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-envelope"></i>
+                    <h2>Correo Electrónico</h2>
+                </div>
+                <form method="POST" action="{{ url_for('perfil') }}" class="profile-form">
+                    <input type="hidden" name="action" value="cambiar_email">
+                    <div class="form-group">
+                        <label>Correo actual</label>
+                        <input type="text" value="{{ user.email or 'Sin correo registrado' }}" disabled class="input-disabled">
+                    </div>
+                    <div class="form-group">
+                        <label>Nuevo correo electrónico</label>
+                        <input type="email" name="new_email" placeholder="nuevo@correo.com" required>
+                    </div>
+                    <button type="submit" class="btn-primary profile-btn">
+                        <i class="fa-solid fa-envelope-circle-check"></i> Actualizar correo
+                    </button>
+                </form>
+            </div>
+
+            <!-- Cambiar Teléfono -->
+            <div class="profile-card reveal">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-phone"></i>
+                    <h2>Número de Teléfono</h2>
+                </div>
+                <form method="POST" action="{{ url_for('perfil') }}" class="profile-form">
+                    <input type="hidden" name="action" value="cambiar_telefono">
+                    <div class="form-group">
+                        <label>Teléfono de contacto</label>
+                        <input type="tel" name="phone" placeholder="+58 412 000 0000" value="{{ user.phone or '' }}">
+                    </div>
+                    <button type="submit" class="btn-primary profile-btn">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar teléfono
+                    </button>
+                </form>
+            </div>
+
+            <!-- Cuentas Vinculadas -->
+            <div class="profile-card reveal">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-circle-nodes"></i>
+                    <h2>Cuentas Vinculadas</h2>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 20px; padding: 15px 0;">
+
+                    <!-- Google Link Row -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fa-brands fa-google" style="font-size: 1.5rem; background: linear-gradient(135deg, #ea4335, #fbbc05, #34a853, #4285f4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                            <div>
+                                <span style="font-weight: 600; color: var(--text-color); display: block; font-size: 0.95rem;">Google</span>
+                                {% if linked_accounts and 'google' in linked_accounts %}
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">{{ linked_accounts['google'] }}</span>
+                                {% else %}
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">No vinculada</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            {% if linked_accounts and 'google' in linked_accounts %}
+                            <form action="{{ url_for('unlink_social', proveedor='google') }}" method="POST" style="margin: 0;">
+                                <button type="submit" class="btn-outline" style="border-color: #ff4a4a; color: #ff4a4a; padding: 6px 15px; font-size: 0.8rem; border-radius: 20px; background: rgba(255,74,74,0.05); cursor: pointer; transition: all 0.3s;">Desvincular</button>
+                            </form>
+                            {% else %}
+                            <a href="#" onclick="window.open('{{ url_for('login_google', link='true') }}', 'SocialLogin', 'width=500,height=600,scrollbars=yes'); return false;" class="btn-primary" style="padding: 6px 15px; font-size: 0.8rem; border-radius: 20px; text-decoration: none;">Vincular</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Facebook Link Row -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 5px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fa-brands fa-facebook-f" style="font-size: 1.5rem; color: #555;"></i>
+                            <div>
+                                <span style="font-weight: 600; color: var(--text-color); display: block; font-size: 0.95rem;">Facebook</span>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">No disponible</span>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="btn-outline" style="border-color: #555; color: #555; padding: 6px 15px; font-size: 0.8rem; border-radius: 20px; opacity: 0.5; cursor: not-allowed;">No disponible</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Cerrar sesión -->
+            <div style="margin-top: 10px;">
+                <a href="{{ url_for('logout') }}" class="btn-danger-grad profile-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+                </a>
+            </div>
+
+        </div>
+
+        <!-- Panel derecho: historial de compras -->
+        <div class="profile-right">
+            <div class="profile-card reveal">
+                <div class="profile-card-header">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <h2>Historial de Compras</h2>
+                </div>
+                <div class="empty-orders">
+                    <i class="fa-solid fa-bag-shopping fa-3x"></i>
+                    <p>Revisa tus pedidos en la sección <a href="{{ url_for('mis_pedidos') }}">Mis Pedidos</a>.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
