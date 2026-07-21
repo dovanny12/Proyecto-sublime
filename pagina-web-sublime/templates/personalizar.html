@@ -403,6 +403,8 @@
                 </button>
             </div>
 
+            <input type="hidden" name="design_image" id="designImageInput">
+
         </form>
     </div><!-- end editor-shell -->
 </div><!-- end studio-layout -->
@@ -1303,14 +1305,12 @@ function updateCanvasTexture() {
     
     customTexture.needsUpdate = true;
 
-    // Calcular precios y actualizar el resumen (cliente-side)
-    const basePrices = { 'franela': 20.00, 'short': 18.00, 'taza': 12.00, 'pen': 8.00, 'llavero': 5.00, 'filtro': 25.00, 'gorra': 15.00, 'mousepad': 10.00 };
-    const base = basePrices[productType] || 15.00;
+    const fallbackPrices = { 'franela': 20.00, 'short': 18.00, 'taza': 12.00, 'pen': 8.00, 'llavero': 5.00, 'filtro': 25.00, 'gorra': 15.00, 'mousepad': 10.00 };
+    let base = fallbackPrices[productType] || 15.00;
     const hasText = (document.getElementById('custom_text').value || '').trim().length > 0;
     const hasImage = !!uploadedImage;
     const custom = (hasText || hasImage) ? 10.00 : 0.00;
     const shipping = 0.00;
-    const total = base + custom + shipping;
 
     const tasaCambio = {{ tasa_cambio|default(40.0) }};
     function jsFormatPrice(v) {
@@ -1319,13 +1319,29 @@ function updateCanvasTexture() {
         return usd + ' / ' + bs;
     }
 
-    document.getElementById('priceBase').innerText = jsFormatPrice(base);
-    document.getElementById('priceCustom').innerText = jsFormatPrice(custom);
-    document.getElementById('priceShipping').innerText = jsFormatPrice(shipping);
-    document.getElementById('priceTotal').innerText = jsFormatPrice(total);
-    // También actualizar el total en el botón o resumen si existiera
-    const totalSpan = document.querySelector('.summary-card [id="priceTotal"]');
-    if (totalSpan) totalSpan.innerText = jsFormatPrice(total);
+    function updatePriceDisplay(bp) {
+        const t = bp + custom + shipping;
+        document.getElementById('priceBase').innerText = jsFormatPrice(bp);
+        document.getElementById('priceCustom').innerText = jsFormatPrice(custom);
+        document.getElementById('priceShipping').innerText = jsFormatPrice(shipping);
+        document.getElementById('priceTotal').innerText = jsFormatPrice(t);
+        const totalSpan = document.querySelector('.summary-card [id="priceTotal"]');
+        if (totalSpan) totalSpan.innerText = jsFormatPrice(t);
+    }
+
+    updatePriceDisplay(base);
+
+    const materiaCat = { 'franela': 'Camisas', 'taza': 'Tazas', 'pen': 'Otros', 'llavero': 'Llaveros', 'filtro': 'Otros', 'gorra': 'Gorras', 'mousepad': 'Mousepads' };
+    const matCat = materiaCat[productType];
+    if (matCat) {
+        const sz = document.getElementById('size') ? document.getElementById('size').value : '';
+        const params = new URLSearchParams({ categoria: matCat });
+        if (sz && productType === 'franela') params.append('talla', sz);
+        fetch('/api/materia-prima/price?' + params.toString())
+            .then(r => r.json())
+            .then(d => { if (d.price && d.price > 0) updatePriceDisplay(d.price); })
+            .catch(() => {});
+    }
 
     // Copy to preview canvas for drag interaction
     const previewCanvas = document.getElementById('texturePreview');
@@ -1873,6 +1889,15 @@ updateCanvasTexture = function() {
         if (typeof customTexture !== 'undefined') customTexture.needsUpdate = true;
     }
 };
+
+/* ── Capture 3D preview as product image on form submit ── */
+document.getElementById('customForm').addEventListener('submit', function() {
+    // Render the 3D scene one more time to ensure it's up-to-date
+    renderer.render(scene, camera);
+    // Capture the 3D viewport (shows design ON the product) instead of the raw texture
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    document.getElementById('designImageInput').value = dataUrl;
+});
 
 updateProductFields();
 init3D();

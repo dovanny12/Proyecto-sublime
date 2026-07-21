@@ -642,6 +642,20 @@ CREATE TABLE IF NOT EXISTS detalle_diseno (
 );
 
 -- =========================================================
+-- PASSWORD RESETS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_usuario INTEGER NOT NULL,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+);
+
+-- =========================================================
 -- CONFIGURACIÓN GENERAL
 -- =========================================================
 
@@ -669,27 +683,14 @@ CREATE TRIGGER evitar_stock_negativo
 BEFORE INSERT ON detalle_ventas
 FOR EACH ROW
 BEGIN
-
     SELECT CASE
         WHEN (
             SELECT stock_actual
             FROM inventario
             WHERE id_producto = NEW.id_producto
         ) < NEW.cantidad
-
         THEN RAISE(ABORT, 'Stock insuficiente')
-END;
-
-CREATE TABLE IF NOT EXISTS password_resets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_usuario INTEGER NOT NULL,
-    token VARCHAR(64) NOT NULL UNIQUE,
-    expires_at DATETIME NOT NULL,
-    used INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-);
-
+    END;
 END;
 
 -- =========================================================

@@ -20,6 +20,7 @@ const line = document.getElementById('lineChart');
 function apiRequest(endpoint, options = {}) {
 
     const url = `${apiBase}/${endpoint}`;
+    options.credentials = 'same-origin';
 
     if (!options.method) {
         options.method = 'GET';
@@ -48,7 +49,7 @@ function apiRequest(endpoint, options = {}) {
 }
 
 function formatCurrency(value) {
-    
+
     const usd = Number(value || 0);
 
     const bs = usd * usdRate;
@@ -60,16 +61,16 @@ function showToast(
     message,
     type = 'success',
     duration = 3000
-){
+) {
 
     const container =
         document.getElementById(
             'toastContainer'
         );
-    if(!container) return;
+    if (!container) return;
 
-    const toast = 
-    document.createElement('div');
+    const toast =
+        document.createElement('div');
 
     toast.className =
         `toast ${type}`;
@@ -214,12 +215,12 @@ function updateTopProducts(products) {
 
         ${products.slice(0, 5).map(prod => {
 
-            const width = Math.min(
-                100,
-                Math.max(10, Math.round((prod.cantidad || 0) * 5))
-            );
+        const width = Math.min(
+            100,
+            Math.max(10, Math.round((prod.cantidad || 0) * 5))
+        );
 
-            return `
+        return `
                 <div class="bar">
 
                     <span>${prod.producto}</span>
@@ -233,7 +234,7 @@ function updateTopProducts(products) {
                 </div>
             `;
 
-        }).join('')}
+    }).join('')}
     `;
 
     renderBarsAnimation();
@@ -436,12 +437,12 @@ function createLineChart(monthly) {
                 },
             },
 
-            
+
 
             scales: {
 
                 x: {
-                    
+
                     ticks: {
                         color: isDarkMode() ? '#9fb3d1' : '#6b7280'
                     },
@@ -492,12 +493,12 @@ function setupInventoryListeners() {
             btnMateriaPrima.classList.add('active');
             btnPersonalizado.classList.remove('active');
             currentInventorySubTab = 'materia-prima';
-            
+
             if (openMateriaPrimaModalBtn) openMateriaPrimaModalBtn.style.display = 'inline-block';
             if (openProductModalBtn) openProductModalBtn.style.display = 'none';
             if (materiaPrimaTableContainer) materiaPrimaTableContainer.style.display = 'block';
             if (personalizadoTableContainer) personalizadoTableContainer.style.display = 'none';
-            
+
             renderInventory();
         });
 
@@ -505,12 +506,12 @@ function setupInventoryListeners() {
             btnPersonalizado.classList.add('active');
             btnMateriaPrima.classList.remove('active');
             currentInventorySubTab = 'personalizado';
-            
+
             if (openMateriaPrimaModalBtn) openMateriaPrimaModalBtn.style.display = 'none';
             if (openProductModalBtn) openProductModalBtn.style.display = 'inline-block';
             if (materiaPrimaTableContainer) materiaPrimaTableContainer.style.display = 'none';
             if (personalizadoTableContainer) personalizadoTableContainer.style.display = 'block';
-            
+
             renderInventory();
         });
     }
@@ -526,7 +527,7 @@ function setupInventoryListeners() {
         openMateriaPrimaModalBtn.addEventListener('click', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('materiaFecha').value = today;
-            document.getElementById('materiaTasa').value = window.usdRate || 40.0;
+            document.getElementById('materiaTasa').value = (window.usdRate || 40.0).toFixed(2);
             document.getElementById('materiaUnidades').value = '';
             document.getElementById('materiaPrecioUnitario').value = '';
             document.getElementById('materiaIva').value = '16';
@@ -568,7 +569,7 @@ function setupInventoryListeners() {
 
     const closeConsumirBtn = document.getElementById('closeConsumirMateriaModal');
     const cancelConsumirBtn = document.getElementById('cancelConsumirMateria');
-    if (closeConsumirBtn)  closeConsumirBtn.addEventListener('click', cerrarConsumirModal);
+    if (closeConsumirBtn) closeConsumirBtn.addEventListener('click', cerrarConsumirModal);
     if (cancelConsumirBtn) cancelConsumirBtn.addEventListener('click', cerrarConsumirModal);
 
     // Live preview when typing cantidad
@@ -604,7 +605,7 @@ function setupInventoryListeners() {
             const cant = parseInt(document.getElementById('consumirCantidad').value) || 0;
             if (cant <= 0) { showToast('Ingresa una cantidad válida.', 'error'); return; }
             const motivo = document.getElementById('consumirMotivo').value;
-            const notas  = document.getElementById('consumirNotas').value;
+            const notas = document.getElementById('consumirNotas').value;
             try {
                 const res = await apiRequest(`materia-prima/${consumirMateriaCurrentId}/consumir`, {
                     method: 'POST',
@@ -772,7 +773,7 @@ function updateMateriaEditCalc() {
     document.getElementById('editMateriaCalcTotalBs').textContent = totalBs.toFixed(2);
 }
 
-window.openEditMateriaPrima = async function(id) {
+window.openEditMateriaPrima = async function (id) {
     try {
         const item = windowMateriaPrimaItems.find(m => m.id_materia === id);
         if (!item) {
@@ -808,7 +809,7 @@ window.openEditMateriaPrima = async function(id) {
 /* ── Consumir Materia Prima ── */
 let consumirMateriaCurrentId = null;
 
-window.openConsumirMateria = function(id) {
+window.openConsumirMateria = function (id) {
     const item = windowMateriaPrimaItems.find(m => m.id_materia === id);
     if (!item) return;
     consumirMateriaCurrentId = id;
@@ -816,7 +817,7 @@ window.openConsumirMateria = function(id) {
     const stockDisp = (item.stock_disponible !== null && item.stock_disponible !== undefined)
         ? parseInt(item.stock_disponible) : parseInt(item.unidades);
     const details = item.categoria.toLowerCase() === 'camisas'
-        ? `${item.categoria} (${item.talla||''} · ${item.grupo_edad||''})` : item.categoria;
+        ? `${item.categoria} (${item.talla || ''} · ${item.grupo_edad || ''})` : item.categoria;
 
     document.getElementById('consumirMateriaInfo').innerHTML = `
         <div class="consumir-materia-info-row">
@@ -839,7 +840,7 @@ window.openConsumirMateria = function(id) {
     document.getElementById('consumirMateriaModal').classList.add('active');
 };
 
-window.deleteMateriaPrima = async function(id) {
+window.deleteMateriaPrima = async function (id) {
     const confirmacion = confirm('¿Estás seguro de que deseas eliminar esta compra/lote de materia prima?');
     if (!confirmacion) return;
 
@@ -873,18 +874,18 @@ function renderInventory() {
 
         // Update summary bar
         const totalUnidades = windowMateriaPrimaItems.reduce((s, i) => s + (parseInt(i.unidades) || 0), 0);
-        const totalUsd      = windowMateriaPrimaItems.reduce((s, i) => s + (parseFloat(i.subtotal) || 0), 0);
-        const totalIvaUsd   = windowMateriaPrimaItems.reduce((s, i) => {
-            const base = (parseFloat(i.precio_unitario)||0) * (parseInt(i.unidades)||0);
-            return s + base * (parseFloat(i.iva)||0) / 100;
+        const totalUsd = windowMateriaPrimaItems.reduce((s, i) => s + (parseFloat(i.subtotal) || 0), 0);
+        const totalIvaUsd = windowMateriaPrimaItems.reduce((s, i) => {
+            const base = (parseFloat(i.precio_unitario) || 0) * (parseInt(i.unidades) || 0);
+            return s + base * (parseFloat(i.iva) || 0) / 100;
         }, 0);
-        const totalBs = windowMateriaPrimaItems.reduce((s, i) => s + ((parseFloat(i.subtotal)||0) * (parseFloat(i.tasa)||1)), 0);
+        const totalBs = windowMateriaPrimaItems.reduce((s, i) => s + ((parseFloat(i.subtotal) || 0) * (parseFloat(i.tasa) || 1)), 0);
 
         const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
         setEl('summaryTotalUnidades', totalUnidades.toLocaleString('es-VE'));
-        setEl('summaryTotalUsd',      `$${totalUsd.toFixed(2)}`);
-        setEl('summaryTotalBs',       `Bs ${totalBs.toFixed(2)}`);
-        setEl('summaryTotalIva',      `$${totalIvaUsd.toFixed(2)}`);
+        setEl('summaryTotalUsd', `$${totalUsd.toFixed(2)}`);
+        setEl('summaryTotalBs', `Bs ${totalBs.toFixed(2)}`);
+        setEl('summaryTotalIva', `$${totalIvaUsd.toFixed(2)}`);
 
         if (filtered.length === 0) {
             materiaBody.innerHTML = `
@@ -897,21 +898,21 @@ function renderInventory() {
         }
 
         materiaBody.innerHTML = filtered.map(item => {
-            const unidades   = parseInt(item.unidades) || 0;
+            const unidades = parseInt(item.unidades) || 0;
             const precioUnit = parseFloat(item.precio_unitario) || 0;
-            const ivaPct     = parseFloat(item.iva) || 0;
-            const tasa       = parseFloat(item.tasa) || 1;
-            const subUsd     = parseFloat(item.subtotal) || 0;
-            const base       = unidades * precioUnit;
-            const ivaUsd     = base * ivaPct / 100;
-            const ivaBs      = ivaUsd * tasa;
+            const ivaPct = parseFloat(item.iva) || 0;
+            const tasa = parseFloat(item.tasa) || 1;
+            const subUsd = parseFloat(item.subtotal) || 0;
+            const base = unidades * precioUnit;
+            const ivaUsd = base * ivaPct / 100;
+            const ivaBs = ivaUsd * tasa;
             const totalBsRow = subUsd * tasa;
-            const stockDisp  = (item.stock_disponible !== null && item.stock_disponible !== undefined)
+            const stockDisp = (item.stock_disponible !== null && item.stock_disponible !== undefined)
                 ? parseInt(item.stock_disponible) : unidades;
-            const stockPct   = unidades > 0 ? (stockDisp / unidades) * 100 : 0;
+            const stockPct = unidades > 0 ? (stockDisp / unidades) * 100 : 0;
             const stockColor = stockPct <= 0 ? '#ff416c' : stockPct <= 25 ? '#ffb700' : 'var(--primary)';
-            const details    = item.categoria.toLowerCase() === 'camisas'
-                ? `${item.categoria} <small style="color:var(--text-muted);">(${item.talla||'-'} · ${item.grupo_edad||'-'})</small>`
+            const details = item.categoria.toLowerCase() === 'camisas'
+                ? `${item.categoria} <small style="color:var(--text-muted);">(${item.talla || '-'} · ${item.grupo_edad || '-'})</small>`
                 : item.categoria;
 
             return `
@@ -920,8 +921,15 @@ function renderInventory() {
                     <td><strong>${details}</strong></td>
                     <td>${unidades}</td>
                     <td>
-                        <span style="font-weight:700;color:${stockColor};">${stockDisp}</span>
-                        <span style="font-size:0.72rem;color:var(--text-muted);margin-left:4px;">/ ${unidades}</span>
+                        <div class="stock-inline-editor" data-materia-id="${item.id_materia}" data-max="${unidades}">
+                            <button class="stock-btn stock-btn-minus" onclick="adjustMateriaStock(${item.id_materia}, -1, ${unidades})" title="Reducir 1">−</button>
+                            <span class="stock-value" id="matStockVal${item.id_materia}">${stockDisp}</span>
+                            <button class="stock-btn stock-btn-plus" onclick="adjustMateriaStock(${item.id_materia}, 1, ${unidades})" title="Aumentar 1">+</button>
+                            <button class="stock-btn stock-btn-set" onclick="quickEditMateriaStock(${item.id_materia}, ${unidades})" title="Editar cantidad">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                            <span style="font-size:0.72rem;color:var(--text-muted);margin-left:2px;">/ ${unidades}</span>
+                        </div>
                         ${stockDisp === 0 ? '<span class="badge badge-danger" style="margin-left:4px;font-size:0.65rem;">Agotado</span>' : ''}
                     </td>
                     <td>Bs ${tasa.toFixed(2)}</td>
@@ -934,16 +942,13 @@ function renderInventory() {
                     <td><span class="badge ${item.personalizado ? 'badge-info' : 'badge-secondary'}">${item.personalizado || 'General'}</span></td>
                     <td>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            <button class="btn-edit" onclick="openEditMateriaPrima(${item.id_materia})">
-                                <i class="fa-solid fa-pen-to-square"></i> Editar
-                            </button>
-                            <button class="btn-consumir-materia" onclick="openConsumirMateria(${item.id_materia})" ${stockDisp===0?'disabled':''} title="Consumir / Descontar stock">
-                                <i class="fa-solid fa-fire-burner"></i> Consumir
-                            </button>
-                            <button class="btn-delete" onclick="deleteMateriaPrima(${item.id_materia})" title="Eliminar">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
+                             <button class="btn-edit" onclick="openEditMateriaPrima(${item.id_materia})">
+                                 <i class="fa-solid fa-pen-to-square"></i> Editar
+                             </button>
+                             <button class="btn-delete" onclick="deleteMateriaPrima(${item.id_materia})" title="Eliminar">
+                                 <i class="fa-solid fa-trash"></i>
+                             </button>
+                         </div>
                     </td>
                 </tr>`;
         }).join('');
@@ -951,8 +956,8 @@ function renderInventory() {
         if (!personalizadoBody) return;
         let filtered = windowInventoryItems;
         if (searchQuery) {
-            filtered = filtered.filter(item => 
-                item.nombre.toLowerCase().includes(searchQuery) || 
+            filtered = filtered.filter(item =>
+                item.nombre.toLowerCase().includes(searchQuery) ||
                 (item.categoria || '').toLowerCase().includes(searchQuery)
             );
         }
@@ -960,7 +965,7 @@ function renderInventory() {
         if (filtered.length === 0) {
             personalizadoBody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align: center; color: var(--muted); padding: 30px;">
+                    <td colspan="6" style="text-align: center; color: var(--muted); padding: 30px;">
                         No se encontraron productos personalizados
                     </td>
                 </tr>
@@ -968,12 +973,28 @@ function renderInventory() {
             return;
         }
 
-        personalizadoBody.innerHTML = filtered.map(item => `
+        personalizadoBody.innerHTML = filtered.map(item => {
+            const imgSrc = item.imagen ? `/static/images/${item.imagen}` : '';
+            const thumbHtml = imgSrc
+                ? `<img src="${imgSrc}" alt="${item.nombre}" class="inv-product-thumb" onclick="openImageLightbox('${imgSrc}')" title="Click para ampliar">`
+                : `<span class="inv-product-no-img"><i class="fa-solid fa-image"></i></span>`;
+
+            return `
             <tr>
+                <td>${thumbHtml}</td>
                 <td>${item.nombre}</td>
                 <td>${item.categoria || 'Sin categoría'}</td>
                 <td>${formatCurrency(item.precio)}</td>
-                <td>${item.stock}</td>
+                <td>
+                    <div class="stock-inline-editor" data-product-id="${item.id_producto}">
+                        <button class="stock-btn stock-btn-minus" onclick="adjustStock(${item.id_producto}, -1)" title="Reducir 1">−</button>
+                        <span class="stock-value" id="stockVal${item.id_producto}">${item.stock}</span>
+                        <button class="stock-btn stock-btn-plus" onclick="adjustStock(${item.id_producto}, 1)" title="Aumentar 1">+</button>
+                        <button class="stock-btn stock-btn-set" onclick="quickEditStock(${item.id_producto})" title="Editar cantidad">
+                            <i class="fa-solid fa-pencil"></i>
+                        </button>
+                    </div>
+                </td>
                 <td>
                     <button class="btn-edit" onclick="openEditModal(${item.id_producto})">
                         <i class="fa-solid fa-pen-to-square"></i> Editar
@@ -983,9 +1004,27 @@ function renderInventory() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
     }
 }
+
+/* ── Image Lightbox ── */
+function openImageLightbox(src) {
+    const overlay = document.getElementById('imgLightboxOverlay');
+    const img = document.getElementById('imgLightboxImage');
+    if (!overlay || !img) return;
+    img.src = src;
+    overlay.classList.add('active');
+}
+
+function closeImageLightbox() {
+    const overlay = document.getElementById('imgLightboxOverlay');
+    if (overlay) overlay.classList.remove('active');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeImageLightbox();
+});
 
 async function loadInventory() {
     try {
@@ -996,12 +1035,12 @@ async function loadInventory() {
 
         windowInventoryItems = invResponse.inventory || [];
         windowMateriaPrimaItems = matResponse.materia_prima || [];
-        
+
         if (!inventoryListenersInitialized) {
             setupInventoryListeners();
             inventoryListenersInitialized = true;
         }
-        
+
         renderInventory();
         // Update dashboard low stock widget
         updateDashboardLowStock(windowInventoryItems);
@@ -1110,14 +1149,14 @@ function updateOrdersStats(orders) {
     const counts = {
         pendiente: orders.filter(o => o.estado === 'Pendiente de Verificación').length,
         procesando: orders.filter(o => o.estado === 'Procesando').length,
-        enviado:   orders.filter(o => o.estado === 'Enviado').length,
+        enviado: orders.filter(o => o.estado === 'Enviado').length,
         entregado: orders.filter(o => o.estado === 'Entregado').length,
     };
 
     const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
     el('statNumPendientes', counts.pendiente);
     el('statNumProcesando', counts.procesando);
-    el('statNumEnviados',   counts.enviado);
+    el('statNumEnviados', counts.enviado);
     el('statNumEntregados', counts.entregado);
 
     // Update dashboard pending badge
@@ -1156,25 +1195,25 @@ function renderOrdersList() {
 
     const statusColors = {
         'Pendiente de Verificación': '#ffb700',
-        'Procesando':                '#3498db',
-        'Enviado':                   '#9b59b6',
-        'Entregado':                 '#00b350'
+        'Procesando': '#3498db',
+        'Enviado': '#9b59b6',
+        'Entregado': '#00b350'
     };
 
     container.innerHTML = filtered.map(order => {
         const color = statusColors[order.estado] || '#888';
-        const usd   = Number(order.total || 0).toFixed(2);
-        const bs    = (Number(order.total || 0) * (window.usdRate || 40)).toFixed(2);
+        const usd = Number(order.total || 0).toFixed(2);
+        const bs = (Number(order.total || 0) * (window.usdRate || 40)).toFixed(2);
 
-        /* ── Items rows ── */
+        /* ── Items inline chips ── */
         const itemsHtml = (order.items || []).length
             ? (order.items || []).map(item => `
-                <div class="order-item-row">
+                <span class="order-item-chip">
                     <span class="order-item-name">${item.name || 'Producto personalizado'}</span>
                     <span class="order-item-qty">x${item.cantidad}</span>
                     <span class="order-item-price">$${Number(item.precio_unitario).toFixed(2)}</span>
-                </div>`).join('')
-            : `<div style="font-size:0.82rem;color:var(--text-muted);padding:4px 0;">Sin items registrados</div>`;
+                </span>`).join('')
+            : `<span style="font-size:0.78rem;color:var(--text-muted);padding:2px 0;">Sin items</span>`;
 
         /* ── Action buttons ── */
         let actionsHtml = '';
@@ -1221,7 +1260,7 @@ function renderOrdersList() {
                 <div class="order-header-right">
                     <span class="order-date">
                         <i class="fa-regular fa-calendar"></i>
-                        ${order.fecha ? new Date(order.fecha).toLocaleDateString('es-VE', {day:'2-digit',month:'short',year:'numeric'}) : 'N/A'}
+                        ${order.fecha ? new Date(order.fecha).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                     </span>
                     <span class="order-status-badge" style="background:${color}1e;color:${color};border:1px solid ${color}44;">
                         ${order.estado}
@@ -1245,8 +1284,8 @@ function renderOrdersList() {
                     <h4><i class="fa-solid fa-location-dot"></i> Envío</h4>
                     <p><i class="fa-solid fa-map-pin"></i> ${order.direccion_envio || 'N/A'}</p>
                     ${order.empresa_envio
-                        ? `<p class="shipping-info"><i class="fa-solid fa-truck"></i> ${order.empresa_envio}${order.numero_guia ? ` &nbsp;|&nbsp; Guía: <b>${order.numero_guia}</b>` : ''}</p>`
-                        : ''}
+                ? `<p class="shipping-info"><i class="fa-solid fa-truck"></i> ${order.empresa_envio}${order.numero_guia ? ` &nbsp;|&nbsp; Guía: <b>${order.numero_guia}</b>` : ''}</p>`
+                : ''}
                 </div>
 
                 <!-- Col 3: Pago -->
@@ -1352,6 +1391,27 @@ document.addEventListener('click', e => {
     }
 });
 
+/* ── Select/Deselect all visible orders ── */
+document.addEventListener('click', e => {
+    const btn = e.target.closest('#selectAllOrdersBtn');
+    if (!btn) return;
+    const checkboxes = Array.from(document.querySelectorAll('.order-select-checkbox'));
+    if (!checkboxes.length) return;
+    const allChecked = checkboxes.every(cb => cb.checked);
+    checkboxes.forEach(cb => {
+        const id = parseInt(cb.dataset.id);
+        if (allChecked) {
+            cb.checked = false;
+            selectedOrderIds = selectedOrderIds.filter(x => x !== id);
+        } else {
+            cb.checked = true;
+            if (!selectedOrderIds.includes(id)) selectedOrderIds.push(id);
+        }
+    });
+    btn.classList.toggle('active', !allChecked);
+    updateOrdersBulkActionsBar();
+});
+
 // Verificar pago
 async function verifyOrder(orderId) {
     if (!confirm('¿Confirmar pago? Se descontará el stock automáticamente.')) return;
@@ -1420,7 +1480,7 @@ async function loadInvoices() {
 
                 <td>
                     ${new Date(invoice.fecha)
-                        .toLocaleDateString('es-VE')}
+                .toLocaleDateString('es-VE')}
                 </td>
 
                 <td>
@@ -1519,7 +1579,7 @@ function buildCategoryPills() {
     `).join('');
 }
 
-window.setSalesCat = function(cat) {
+window.setSalesCat = function (cat) {
     salesCatFilter = cat;
     buildCategoryPills();
     renderSalesProducts();
@@ -1567,9 +1627,9 @@ function renderSalesProducts() {
 
                 <div class="product-card-image">
                     ${imgSrc
-                        ? `<img src="${imgSrc}" alt="${product.nombre}" loading="lazy">`
-                        : `<span class="no-img"><i class="fa-solid fa-image"></i></span>`
-                    }
+                ? `<img src="${imgSrc}" alt="${product.nombre}" loading="lazy">`
+                : `<span class="no-img"><i class="fa-solid fa-image"></i></span>`
+            }
                 </div>
 
                 <div class="product-card-body">
@@ -1596,7 +1656,7 @@ function renderSalesProducts() {
     }).join('');
 }
 
-window.addToCartById = function(id) {
+window.addToCartById = function (id) {
     const product = allSalesProducts.find(p => p.id_producto == id);
     if (!product) return;
     addToCart({
@@ -2082,7 +2142,7 @@ function actualizarDescripcionReporte() {
         reportTitle.textContent =
             'Reporte Semanal';
 
-        descripcion.textContent=
+        descripcion.textContent =
             'Incluirá: ventas de la semana, ingresos semanales, productos destacados y análisis de tendencias';
     }
 
@@ -2090,7 +2150,7 @@ function actualizarDescripcionReporte() {
 
         reportTitle.textContent =
             'Reporte Personalizado';
-        
+
         descripcion.textContent =
             'Permite seleccionar métricas específicas, rango de fechas y filtros personalizados para generar un reporte a medida';
     }
@@ -2164,12 +2224,12 @@ function generarPDF(tipo) {
     doc.setFontSize(12);
     doc.setTextColor(6, 78, 59);
     doc.text('1. Resumen Financiero', 20, y);
-    
+
     y += 8;
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
-    
+
     const totalSales = dashboardData.stats?.totalSales || dashboardData.topProducts?.reduce((acc, p) => acc + p.cantidad, 0) || 0;
     const totalIncome = dashboardData.totalIncome || 0;
     const avgTicket = totalSales ? (totalIncome / totalSales) : 0;
@@ -2194,7 +2254,7 @@ function generarPDF(tipo) {
         doc.setTextColor(100, 116, 139);
         doc.text('Categoría', 25, y);
         doc.text('Productos en Stock', 120, y);
-        
+
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.2);
         y += 2;
@@ -2234,7 +2294,7 @@ function generarPDF(tipo) {
         doc.text('Ganancias (Bs)', 80, y);
         doc.text('Gastos (Bs)', 130, y);
         doc.text('Neto (Bs)', 170, y);
-        
+
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.2);
         y += 2;
@@ -2308,7 +2368,7 @@ function generarPDF(tipo) {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text('SUBLIME - Documento Oficial de la Comunidad Ezequiel Zamora', 20, 287);
-    
+
     doc.save(`reporte-${tipo}.pdf`);
 }
 
@@ -2512,7 +2572,7 @@ window.addEventListener('click', e => {
 
         cerrarProductModal();
 
-        
+
     }
 });
 
@@ -2739,7 +2799,7 @@ function loadRatesFromBackend() {
                 if (eurInput) eurInput.value = eurRate;
             }
         })
-        .catch(() => {});
+        .catch(() => { });
 }
 
 if (usdInput || eurInput) {
@@ -2787,19 +2847,19 @@ if (saveBtn) {
         }
         fetch('/api/tasa-cambio', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({usd, eur})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usd, eur })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.mensaje) {
-                showToast('Tasas guardadas correctamente', 'success');
-                usdRate = data.usd;
-                window.usdRate = usdRate;
-                eurRate = data.eur;
-            }
-        })
-        .catch(() => showToast('Error al guardar tasas', 'error'));
+            .then(r => r.json())
+            .then(data => {
+                if (data.mensaje) {
+                    showToast('Tasas guardadas correctamente', 'success');
+                    usdRate = data.usd;
+                    window.usdRate = usdRate;
+                    eurRate = data.eur;
+                }
+            })
+            .catch(() => showToast('Error al guardar tasas', 'error'));
     });
 }
 
@@ -2814,7 +2874,7 @@ function loadIVARate() {
             const inp = document.getElementById('ivaRate');
             if (inp) inp.value = currentIVARate;
         })
-        .catch(() => {});
+        .catch(() => { });
 }
 
 function getCurrentIVA() {
@@ -2824,7 +2884,7 @@ function getCurrentIVA() {
 const saveIvaRateBtn =
     document.getElementById('saveIvaRate');
 
-if(saveIvaRateBtn){
+if (saveIvaRateBtn) {
 
     saveIvaRateBtn.addEventListener('click', () => {
 
@@ -2833,7 +2893,7 @@ if(saveIvaRateBtn){
                 document.getElementById('ivaRate').value
             );
 
-        if(isNaN(iva) || iva < 0){
+        if (isNaN(iva) || iva < 0) {
 
             showToast('Ingrese un IVA válido', 'error');
             return;
@@ -2842,15 +2902,15 @@ if(saveIvaRateBtn){
 
         fetch('/api/config/iva', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({iva: iva})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ iva: iva })
         })
-        .then(r => r.json())
-        .then(data => {
-            currentIVARate = data.iva;
-            showToast(`IVA actualizado a ${data.iva}%`, 'success');
-        })
-        .catch(() => showToast('Error al guardar IVA', 'error'));
+            .then(r => r.json())
+            .then(data => {
+                currentIVARate = data.iva;
+                showToast(`IVA actualizado a ${data.iva}%`, 'success');
+            })
+            .catch(() => showToast('Error al guardar IVA', 'error'));
 
     });
 
@@ -2897,7 +2957,95 @@ async function openEditProduct(id) {
 
 window.openEditModal = openEditProduct;
 
-window.deleteProduct = async function(id) {
+/* ─── Inline stock editing (productos) ─── */
+window.adjustStock = async function (productId, delta) {
+    const el = document.getElementById(`stockVal${productId}`);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const newStock = Math.max(0, current + delta);
+    try {
+        await apiRequest(`inventory/${productId}/stock`, {
+            method: 'PATCH',
+            body: { stock: newStock }
+        });
+        el.textContent = newStock;
+        showToast(`Stock actualizado: ${newStock}`, 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+};
+
+window.quickEditStock = async function (productId) {
+    const el = document.getElementById(`stockVal${productId}`);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const input = prompt('Nuevo stock:', current);
+    if (input === null) return;
+    const newStock = parseInt(input);
+    if (isNaN(newStock) || newStock < 0) {
+        showToast('Valor inválido. Debe ser un número entero >= 0.', 'error');
+        return;
+    }
+    try {
+        await apiRequest(`inventory/${productId}/stock`, {
+            method: 'PATCH',
+            body: { stock: newStock }
+        });
+        el.textContent = newStock;
+        showToast(`Stock actualizado: ${newStock}`, 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+};
+
+/* ─── Inline stock editing (materia prima) ─── */
+window.adjustMateriaStock = async function (materiaId, delta, maxUnidades) {
+    const el = document.getElementById(`matStockVal${materiaId}`);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const newStock = Math.max(0, Math.min(maxUnidades, current + delta));
+    try {
+        await apiRequest(`materia-prima/${materiaId}/stock`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: { stock: newStock }
+        });
+        el.textContent = newStock;
+        showToast(`Stock actualizado: ${newStock}`, 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+};
+
+window.quickEditMateriaStock = async function (materiaId, maxUnidades) {
+    const el = document.getElementById(`matStockVal${materiaId}`);
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const input = prompt(`Nuevo stock (máx. ${maxUnidades}):`, current);
+    if (input === null) return;
+    const newStock = parseInt(input);
+    if (isNaN(newStock) || newStock < 0) {
+        showToast('Valor inválido. Debe ser un número entero >= 0.', 'error');
+        return;
+    }
+    if (newStock > maxUnidades) {
+        showToast(`El stock no puede superar las unidades originales (${maxUnidades}).`, 'error');
+        return;
+    }
+    try {
+        await apiRequest(`materia-prima/${materiaId}/stock`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: { stock: newStock }
+        });
+        el.textContent = newStock;
+        showToast(`Stock actualizado: ${newStock}`, 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+};
+
+window.deleteProduct = async function (id) {
     const confirmar = confirm('¿Desea eliminar este producto?');
     if (!confirmar) return;
 
@@ -2916,59 +3064,59 @@ document
     .getElementById('saveEditBtn')
     .addEventListener('click', async () => {
 
-    const id = document.getElementById('editId').value;
+        const id = document.getElementById('editId').value;
 
-    try {
+        try {
 
-        const formData = new FormData();
-        formData.append('nombre', document.getElementById('editNombre').value);
-        formData.append('categoria', document.getElementById('editCategoria').value);
-        formData.append('precio', Number(document.getElementById('editPrecio').value));
-        formData.append('iva', Number(document.getElementById('editIva').value || 16));
-        formData.append('stock', Number(document.getElementById('editStock').value));
-        formData.append('descripcion', document.getElementById('editDescripcion').value);
-        const editImagenInput = document.getElementById('editImagen');
-        if (editImagenInput.files.length > 0) {
-            formData.append('imagen', editImagenInput.files[0]);
+            const formData = new FormData();
+            formData.append('nombre', document.getElementById('editNombre').value);
+            formData.append('categoria', document.getElementById('editCategoria').value);
+            formData.append('precio', Number(document.getElementById('editPrecio').value));
+            formData.append('iva', Number(document.getElementById('editIva').value || 16));
+            formData.append('stock', Number(document.getElementById('editStock').value));
+            formData.append('descripcion', document.getElementById('editDescripcion').value);
+            const editImagenInput = document.getElementById('editImagen');
+            if (editImagenInput.files.length > 0) {
+                formData.append('imagen', editImagenInput.files[0]);
+            }
+
+            await apiRequest(`product/${id}`, {
+                method: 'PUT',
+                body: formData
+            });
+
+            document
+                .getElementById('editProductModal')
+                .classList.remove('active');
+
+            await loadInventory();
+            showToast('Producto actualizado correctamente', 'success');
+
+        } catch (error) {
+
+            showToast(error.message, 'error');
+
         }
 
-        await apiRequest(`product/${id}`, {
-            method: 'PUT',
-            body: formData
-        });
+    });
+
+document
+    .getElementById('cancelEditBtn')
+    .addEventListener('click', () => {
 
         document
             .getElementById('editProductModal')
             .classList.remove('active');
 
-        await loadInventory();
-        showToast('Producto actualizado correctamente', 'success');
-
-    } catch (error) {
-
-        showToast(error.message, 'error');
-
-    }
-
-});
-
-document
-    .getElementById('cancelEditBtn')
-    .addEventListener('click',()=>{
-
-    document
-        .getElementById('editProductModal')
-        .classList.remove('active');
-
-});
+    });
 
 
 const editModal =
     document.getElementById('editProductModal');
 
-editModal.addEventListener('click',(e)=>{
+editModal.addEventListener('click', (e) => {
 
-    if(e.target === editModal){
+    if (e.target === editModal) {
 
         editModal.classList.remove('active');
 
@@ -2980,9 +3128,9 @@ editModal.addEventListener('click',(e)=>{
 const invoiceModal =
     document.getElementById('invoiceModal');
 
-invoiceModal.addEventListener('click',(e)=>{
+invoiceModal.addEventListener('click', (e) => {
 
-    if(e.target === invoiceModal){
+    if (e.target === invoiceModal) {
 
         invoiceModal.classList.remove('active');
 
@@ -2990,16 +3138,16 @@ invoiceModal.addEventListener('click',(e)=>{
 
 });
 
-window.openInvoiceModal = async function(id){
+window.openInvoiceModal = async function (id) {
 
-    try{
+    try {
 
         const invoice =
             await apiRequest(`invoice/${id}`);
 
         document.getElementById('invoiceNumber')
             .textContent =
-            `INV-${String(invoice.id).padStart(3,'0')}`;
+            `INV-${String(invoice.id).padStart(3, '0')}`;
 
         document.getElementById('invoiceClient')
             .textContent =
@@ -3008,7 +3156,7 @@ window.openInvoiceModal = async function(id){
         document.getElementById('invoiceDate')
             .textContent =
             new Date(invoice.fecha)
-            .toLocaleDateString('es-VE');
+                .toLocaleDateString('es-VE');
 
         document.getElementById('invoiceSubtotal')
             .textContent =
@@ -3039,7 +3187,7 @@ window.openInvoiceModal = async function(id){
             .getElementById('invoiceModal')
             .classList.add('active');
 
-    }catch(error){
+    } catch (error) {
 
         console.error(error);
 
@@ -3131,7 +3279,7 @@ async function generateReport() {
             response.invoices.forEach(inv => {
                 const fecha = new Date(inv.fecha).toLocaleDateString('es-VE');
                 const total = (inv.total || 0).toFixed(2);
-                csv += `INV-${String(inv.id).padStart(3,'0')},${inv.cliente || 'Desconocido'},${fecha},${inv.items} producto(s),${total}\n`;
+                csv += `INV-${String(inv.id).padStart(3, '0')},${inv.cliente || 'Desconocido'},${fecha},${inv.items} producto(s),${total}\n`;
             });
             csv += `,,,,Total General,${response.gran_total.toFixed(2)}\n`;
 
@@ -3205,17 +3353,17 @@ async function generateReport() {
     }
 }
 
-const closeInvoiceBtn = 
+const closeInvoiceBtn =
     document.getElementById('closeInvoiceBtn');
 
-if(closeInvoiceBtn){
-    closeInvoiceBtn.addEventListener('click',()=>{
+if (closeInvoiceBtn) {
+    closeInvoiceBtn.addEventListener('click', () => {
 
-    document
-        .getElementById('invoiceModal')
-        .classList.remove('active');
+        document
+            .getElementById('invoiceModal')
+            .classList.remove('active');
 
-});
+    });
 
 }
 
@@ -3286,169 +3434,169 @@ th{padding:5px 8px;background:#1a1a2e;color:#fff;font-size:9pt;font-weight:700;t
 }
 
 document
-.getElementById('downloadInvoiceBtn')
-.addEventListener('click',()=>{
+    .getElementById('downloadInvoiceBtn')
+    .addEventListener('click', () => {
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageW = 210;
-    const margin = 20;
-    const usableW = pageW - margin * 2;
-    let y = margin;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const pageW = 210;
+        const margin = 20;
+        const usableW = pageW - margin * 2;
+        let y = margin;
 
-    const invoice = {
-        number: document.getElementById('invoiceNumber').textContent,
-        client: document.getElementById('invoiceClient').textContent,
-        date: document.getElementById('invoiceDate').textContent,
-        total: document.getElementById('invoiceTotal').textContent,
-        items: []
-    };
-    document.querySelectorAll('#invoiceItems tr').forEach(tr => {
-        const tds = tr.querySelectorAll('td');
-        if (tds.length === 4) {
-            invoice.items.push({
-                producto: tds[0].textContent,
-                cantidad: tds[1].textContent,
-                precio: tds[2].textContent,
-                total: tds[3].textContent
-            });
-        }
-    });
+        const invoice = {
+            number: document.getElementById('invoiceNumber').textContent,
+            client: document.getElementById('invoiceClient').textContent,
+            date: document.getElementById('invoiceDate').textContent,
+            total: document.getElementById('invoiceTotal').textContent,
+            items: []
+        };
+        document.querySelectorAll('#invoiceItems tr').forEach(tr => {
+            const tds = tr.querySelectorAll('td');
+            if (tds.length === 4) {
+                invoice.items.push({
+                    producto: tds[0].textContent,
+                    cantidad: tds[1].textContent,
+                    precio: tds[2].textContent,
+                    total: tds[3].textContent
+                });
+            }
+        });
 
-    // Header with Logo
-    const logoImg = document.querySelector('.sidebar-logo-img');
-    if (logoImg) {
-        try {
-            doc.addImage(logoImg, 'PNG', margin, y, 45, 12);
-        } catch (e) {
-            console.error("Error adding logo to Invoice:", e);
+        // Header with Logo
+        const logoImg = document.querySelector('.sidebar-logo-img');
+        if (logoImg) {
+            try {
+                doc.addImage(logoImg, 'PNG', margin, y, 45, 12);
+            } catch (e) {
+                console.error("Error adding logo to Invoice:", e);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(24);
+                doc.text('SUBLIME', margin, y);
+            }
+        } else {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(24);
             doc.text('SUBLIME', margin, y);
         }
-    } else {
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text('Sistema de Ventas', margin, y + 17);
+
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(24);
-        doc.text('SUBLIME', margin, y);
-    }
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Sistema de Ventas', margin, y + 17);
+        doc.setFontSize(18);
+        const titleW = doc.getTextWidth('FACTURA');
+        doc.text('FACTURA', pageW - margin - titleW, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        const numW = doc.getTextWidth(invoice.number);
+        doc.text(invoice.number, pageW - margin - numW, y + 6);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    const titleW = doc.getTextWidth('FACTURA');
-    doc.text('FACTURA', pageW - margin - titleW, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    const numW = doc.getTextWidth(invoice.number);
-    doc.text(invoice.number, pageW - margin - numW, y + 6);
+        y += 24;
+        doc.setDrawColor(26, 26, 46);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageW - margin, y);
+        y += 10;
 
-    y += 24;
-    doc.setDrawColor(26, 26, 46);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageW - margin, y);
-    y += 10;
+        // Info
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('Facturado a:', margin, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(invoice.client, margin, y + 5);
 
-    // Info
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('Facturado a:', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.text(invoice.client, margin, y + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        const dateLabelW = doc.getTextWidth('Fecha:');
+        doc.text('Fecha:', pageW - margin - 50, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(invoice.date, pageW - margin - 50, y + 5);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    const dateLabelW = doc.getTextWidth('Fecha:');
-    doc.text('Fecha:', pageW - margin - 50, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.text(invoice.date, pageW - margin - 50, y + 5);
+        y += 18;
 
-    y += 18;
+        // Table header
+        const cols = [
+            { label: 'Producto', x: margin, w: usableW * 0.4 },
+            { label: 'Cantidad', x: margin + usableW * 0.4, w: usableW * 0.15 },
+            { label: 'Precio Unit.', x: margin + usableW * 0.55, w: usableW * 0.2 },
+            { label: 'Total', x: margin + usableW * 0.75, w: usableW * 0.25 }
+        ];
 
-    // Table header
-    const cols = [
-        { label: 'Producto', x: margin, w: usableW * 0.4 },
-        { label: 'Cantidad', x: margin + usableW * 0.4, w: usableW * 0.15 },
-        { label: 'Precio Unit.', x: margin + usableW * 0.55, w: usableW * 0.2 },
-        { label: 'Total', x: margin + usableW * 0.75, w: usableW * 0.25 }
-    ];
+        doc.setFillColor(26, 26, 46);
+        doc.rect(margin, y, usableW, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        cols.forEach(c => doc.text(c.label, c.x + 2, y + 5.5));
+        y += 8;
 
-    doc.setFillColor(26, 26, 46);
-    doc.rect(margin, y, usableW, 8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    cols.forEach(c => doc.text(c.label, c.x + 2, y + 5.5));
-    y += 8;
+        // Table rows
+        doc.setTextColor(26, 26, 46);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        invoice.items.forEach((item, i) => {
+            if (i % 2 === 0) {
+                doc.setFillColor(245, 245, 245);
+                doc.rect(margin, y, usableW, 7, 'F');
+            }
+            doc.text(item.producto, cols[0].x + 2, y + 5);
+            doc.text(item.cantidad, cols[1].x + 2, y + 5);
+            doc.text(item.precio, cols[2].x + 2, y + 5);
+            doc.text(item.total, cols[3].x + 2, y + 5);
+            y += 7;
+        });
 
-    // Table rows
-    doc.setTextColor(26, 26, 46);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    invoice.items.forEach((item, i) => {
-        if (i % 2 === 0) {
-            doc.setFillColor(245, 245, 245);
-            doc.rect(margin, y, usableW, 7, 'F');
-        }
-        doc.text(item.producto, cols[0].x + 2, y + 5);
-        doc.text(item.cantidad, cols[1].x + 2, y + 5);
-        doc.text(item.precio, cols[2].x + 2, y + 5);
-        doc.text(item.total, cols[3].x + 2, y + 5);
-        y += 7;
+        // Total line
+        y += 3;
+        doc.setDrawColor(26, 26, 46);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageW - margin, y);
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        const totalLabel = 'Total: ' + invoice.total;
+        const totalW = doc.getTextWidth(totalLabel);
+        doc.text(totalLabel, pageW - margin - totalW, y);
+
+        // Responsable info
+        y += 12;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Responsable: Comunidad Ezequiel Zamora', margin, y);
+
+        // Footer
+        y = 277;
+        doc.setDrawColor(221, 221, 221);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        doc.setTextColor(136, 136, 136);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        const footerText = 'Factura generada el ' + new Date().toLocaleString('es-VE');
+        const footerW = doc.getTextWidth(footerText);
+        doc.text(footerText, (pageW - footerW) / 2, y + 5);
+
+        doc.save(invoice.number + '.pdf');
+
     });
 
-    // Total line
-    y += 3;
-    doc.setDrawColor(26, 26, 46);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageW - margin, y);
-    y += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    const totalLabel = 'Total: ' + invoice.total;
-    const totalW = doc.getTextWidth(totalLabel);
-    doc.text(totalLabel, pageW - margin - totalW, y);
-
-    // Responsable info
-    y += 12;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Responsable: Comunidad Ezequiel Zamora', margin, y);
-
-    // Footer
-    y = 277;
-    doc.setDrawColor(221, 221, 221);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y, pageW - margin, y);
-    doc.setTextColor(136, 136, 136);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    const footerText = 'Factura generada el ' + new Date().toLocaleString('es-VE');
-    const footerW = doc.getTextWidth(footerText);
-    doc.text(footerText, (pageW - footerW) / 2, y + 5);
-
-    doc.save(invoice.number + '.pdf');
-
-});
-
 document
-.getElementById('printInvoiceBtn')
-.addEventListener('click',()=>{
+    .getElementById('printInvoiceBtn')
+    .addEventListener('click', () => {
 
-    const html = buildInvoiceHTML();
-    const win = window.open('about:blank', '_blank');
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => { win.focus(); win.print(); }, 300);
+        const html = buildInvoiceHTML();
+        const win = window.open('about:blank', '_blank');
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => { win.focus(); win.print(); }, 300);
 
-});
+    });
 
-window.openEditClient = async function(id) {
+window.openEditClient = async function (id) {
 
     try {
 
@@ -3472,52 +3620,52 @@ window.openEditClient = async function(id) {
 };
 
 document
-.getElementById('saveClientBtn')
-.addEventListener('click',async()=>{
+    .getElementById('saveClientBtn')
+    .addEventListener('click', async () => {
 
-    const id =
-        document.getElementById(
-            'editClientId'
-        ).value;
+        const id =
+            document.getElementById(
+                'editClientId'
+            ).value;
 
-    await apiRequest(`client/${id}`,{
+        await apiRequest(`client/${id}`, {
 
-        method:'PUT',
+            method: 'PUT',
 
-        body:{
+            body: {
 
-            nombre:
-                document.getElementById(
-                    'editClientName'
-                ).value,
+                nombre:
+                    document.getElementById(
+                        'editClientName'
+                    ).value,
 
-            correo:
-                document.getElementById(
-                    'editClientEmail'
-                ).value,
+                correo:
+                    document.getElementById(
+                        'editClientEmail'
+                    ).value,
 
-            telefono:
-                document.getElementById(
-                    'editClientPhone'
-                ).value,
+                telefono:
+                    document.getElementById(
+                        'editClientPhone'
+                    ).value,
 
-            direccion:
-                document.getElementById(
-                    'editClientAddress'
-                ).value
-        }
+                direccion:
+                    document.getElementById(
+                        'editClientAddress'
+                    ).value
+            }
+
+        });
+
+        document
+            .getElementById('editClientModal')
+            .classList.remove('active');
+
+        loadClients();
 
     });
 
-    document
-        .getElementById('editClientModal')
-        .classList.remove('active');
-
-    loadClients();
-
-});
-
-window.deleteClient = async function(id) {
+window.deleteClient = async function (id) {
 
     const confirmar = confirm('¿Desea eliminar este cliente?');
     if (!confirmar) return;
@@ -3535,16 +3683,16 @@ window.deleteClient = async function(id) {
 };
 
 document
-.getElementById('cancelClientBtn')
-.addEventListener('click',()=>{
+    .getElementById('cancelClientBtn')
+    .addEventListener('click', () => {
 
-    document
-        .getElementById('editClientModal')
-        .classList.remove('active');
+        document
+            .getElementById('editClientModal')
+            .classList.remove('active');
 
-});
+    });
 
-function deleteClientCard(btn){
+function deleteClientCard(btn) {
     btn.closest('.client-card-mordern').remove();
 
     showToast(
@@ -3612,6 +3760,28 @@ function setupIvaAndCurrencySync() {
         });
 
         productIva.addEventListener('input', updateAddCalc);
+    }
+
+    // --- AUTO-FILL PRICE FROM MATERIA PRIMA ---
+    const catToMat = { 'Termos': 'Otros', 'Mousepads': 'Mousepads', 'Boligrafos': 'Otros', 'camisas': 'Camisas', 'tazas': 'Tazas', 'gorras': 'Gorras', 'llaveros': 'Llaveros' };
+    const productCat = document.getElementById('productCategory');
+    if (productCat) {
+        productCat.addEventListener('change', () => {
+            const matCat = catToMat[productCat.value];
+            if (matCat) {
+                const tasa = window.usdRate || 40.0;
+                fetch(`../api/materia-prima/price?categoria=${encodeURIComponent(matCat)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.price && d.price > 0) {
+                            productPriceUsd.value = d.price.toFixed(2);
+                            productPriceBs.value = (d.price * tasa).toFixed(2);
+                            updateAddCalc();
+                        }
+                    })
+                    .catch(() => { });
+            }
+        });
     }
 
     // --- EDIT PRODUCT ---

@@ -41,8 +41,8 @@ EJECUTAR EL SERVIDOR UNIFICADO
 
 CREDENCIALES ADMINISTRADOR POR DEFECTO
 ======================================
-- Usuario: admin@sublime.com
-- Contraseña: admin123
+- Usuario: adminsublime@gmail.com
+- Contraseña: watsonamelia12
 
 USO DE LA PÁGINA WEB
 =====================
@@ -145,8 +145,8 @@ Para más ayuda, revisa los archivos de configuración o contacta al desarrollad
 
 Panel administrativo:
 
-usuario: admin@sublime.com
-contraseña: admin123
+usuario: adminsublime@gmail.com
+contraseña: watsonamelia12
 rol: Administrador Panel
 Perfil administrador web:
 

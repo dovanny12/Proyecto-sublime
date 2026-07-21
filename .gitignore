@@ -11,9 +11,9 @@ env/
 # Archivos de caché de Python
 *.pyc
 
-# Base de datos local
-pagina web/instance/tienda.db
-instance/tienda.db
+# Bases de datos
+*.db
+*.sqbpro
 
 # VS Code
 .vscode/

@@ -1,1073 +1,1720 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
 
-<link rel="stylesheet" href="styles.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<style>
-    @media print {
-        body * { visibility: hidden; }
-        #invoiceModal.active,
-        #invoiceModal.active * { visibility: visible; }
-        #invoiceModal.active { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 999999; }
-        #invoiceModal.active .invoice-actions { display: none !important; }
-        #invoiceModal.active .invoice-content { max-width: 100%; box-shadow: none; border-radius: 0; padding: 20px; }
-        .sidebar, .main-content, .page-section, .invoice-modal:not(.active) { display: none !important; }
-        @page { margin: 10mm; }
-    }
-</style>
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            #invoiceModal.active,
+            #invoiceModal.active * {
+                visibility: visible;
+            }
 
-<!-- PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            #invoiceModal.active {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: #fff;
+                z-index: 999999;
+            }
 
-<!-- Excel -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+            #invoiceModal.active .invoice-actions {
+                display: none !important;
+            }
+
+            #invoiceModal.active .invoice-content {
+                max-width: 100%;
+                box-shadow: none;
+                border-radius: 0;
+                padding: 20px;
+            }
+
+            .sidebar,
+            .main-content,
+            .page-section,
+            .invoice-modal:not(.active) {
+                display: none !important;
+            }
+
+            @page {
+                margin: 10mm;
+            }
+        }
+    </style>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 </head>
+
 <body class="dark">
 
-<div class="container">
+    <div class="container">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
 
-        <div class="logo">
-            <img src="../static/images/full_logo.png" alt="Sublime's Logo" class="sidebar-logo-img">
-        </div>
-
-        <ul>
-            <li class="active" data-section="dashboard">
-                <i class="fa-solid fa-chart-simple sidebar-icon"></i>Dashboard</li>
-            <li data-section="inventory">
-                <i class="fa-solid fa-box sidebar-icon"></i>Inventario</li>
-            <li data-section="sales">
-                <i class="fa-solid fa-cart-shopping sidebar-icon"></i>Ventas</li>
-            <li data-section="orders">
-                <i class="fa-solid fa-truck sidebar-icon"></i>Pedidos</li>
-            <li data-section="clients">
-                <i class="fa-solid fa-users sidebar-icon"></i>Clientes</li>
-            <li data-section="invoices">
-                <i class="fa-solid fa-file-invoice-dollar sidebar-icon"></i>Facturas</li>
-            <li data-section="settings">
-                <i class="fa-solid fa-gear sidebar-icon"></i>Configuración</li>
-        </ul>
-
-        <a href="/" class="btn primary ver-tienda-btn" title="Ver Tienda">
-            <i class="fa-solid fa-store"></i> Ver Tienda
-        </a>
-
-        <div class="sidebar-footer">
-            <button class="btn-icon logout-btn-icon" id="logoutBtn" title="Cerrar Sesión">
-                <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
-            <button class="btn-icon theme-toggle-btn" id="themeToggleBtn" title="Cambiar Tema">
-                <i class="fa-solid fa-moon"></i>
-            </button>
-        </div>
-
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main">
-
-        <!-- TOPBAR -->
-        <div class="topbar">
-
-            <h1 id="pageTitle">Bienvenido, Admin!</h1>
-
-            <div class="topbar-actions">
+            <div class="logo">
+                <img src="../static/images/full_logo.png" alt="Sublime's Logo" class="sidebar-logo-img">
             </div>
 
-        </div>
+            <ul>
+                <li class="active" data-section="dashboard">
+                    <i class="fa-solid fa-chart-simple sidebar-icon"></i>Dashboard
+                </li>
+                <li data-section="inventory">
+                    <i class="fa-solid fa-box sidebar-icon"></i>Inventario
+                </li>
+                <li data-section="sales">
+                    <i class="fa-solid fa-cart-shopping sidebar-icon"></i>Ventas
+                </li>
+                <li data-section="orders">
+                    <i class="fa-solid fa-truck sidebar-icon"></i>Pedidos
+                </li>
+                <li data-section="clients">
+                    <i class="fa-solid fa-users sidebar-icon"></i>Clientes
+                </li>
+                <li data-section="invoices">
+                    <i class="fa-solid fa-file-invoice-dollar sidebar-icon"></i>Facturas
+                </li>
+                <li data-section="settings">
+                    <i class="fa-solid fa-gear sidebar-icon"></i>Configuración
+                </li>
+            </ul>
 
-        <!-- DASHBOARD -->
-        <section class="page-section active" id="dashboard">
+            <a href="/" class="btn primary ver-tienda-btn" title="Ver Tienda">
+                <i class="fa-solid fa-store"></i> Ver Tienda
+            </a>
 
-            <!-- STATS CARDS -->
-            <div class="cards dashboard-stats">
-                <div class="card stat-card">
-                    <div class="card-icon-wrapper sales-icon-bg">
-                        <i class="fa-solid fa-cart-shopping"></i>
-                    </div>
-                    <div class="card-info">
-                        <span class="card-title">Ventas Totales</span>
-                        <h2 id="salesCount">0</h2>
-                    </div>
-                </div>
-                
-                <div class="card stat-card">
-                    <div class="card-icon-wrapper income-icon-bg">
-                        <i class="fa-solid fa-dollar-sign"></i>
-                    </div>
-                    <div class="card-info">
-                        <span class="card-title">Ingresos Totales</span>
-                        <h2 id="incomeValue">Bs 0,00</h2>
-                    </div>
-                </div>
-
-                <div class="card stat-card">
-                    <div class="card-icon-wrapper ticket-icon-bg">
-                        <i class="fa-solid fa-calculator"></i>
-                    </div>
-                    <div class="card-info">
-                        <span class="card-title">Ticket Promedio</span>
-                        <h2 id="avgTicketValue">Bs 0,00</h2>
-                    </div>
-                </div>
-
-                <div class="card stat-card">
-                    <div class="card-icon-wrapper pending-icon-bg">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                    <div class="card-info">
-                        <span class="card-title">Pedidos Pendientes</span>
-                        <h2 id="pendingOrdersCount">0</h2>
-                    </div>
-                </div>
+            <div class="sidebar-footer">
+                <button class="btn-icon logout-btn-icon" id="logoutBtn" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+                <button class="btn-icon theme-toggle-btn" id="themeToggleBtn" title="Cambiar Tema">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
             </div>
 
-            <!-- CHARTS & DATA GRID -->
-            <div class="dashboard-grid">
-                
-                <!-- Left Column (Main Content) -->
-                <div class="dashboard-main-content" style="display: flex; flex-direction: column; gap: 24px;">
-                    
-                    <!-- Line Chart Box -->
-                    <div class="box chart-line-box">
-                        <h3>Gastos vs Ganancias</h3>
-                        <div class="chart-line">
-                            <canvas id="lineChart"></canvas>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main">
+
+            <!-- TOPBAR -->
+            <div class="topbar">
+
+                <h1 id="pageTitle">Bienvenido, Admin!</h1>
+
+                <div class="topbar-actions">
+                </div>
+
+            </div>
+
+            <!-- DASHBOARD -->
+            <section class="page-section active" id="dashboard">
+
+                <!-- STATS CARDS -->
+                <div class="cards dashboard-stats">
+                    <div class="card stat-card">
+                        <div class="card-icon-wrapper sales-icon-bg">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">Ventas Totales</span>
+                            <h2 id="salesCount">0</h2>
                         </div>
                     </div>
-                    
-                    <!-- Recent Orders Box -->
-                    <div class="box recent-orders-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h3 style="margin: 0; font-weight: 800; font-size: 1.15rem;">Últimos Pedidos Recibidos</h3>
-                            <button class="btn-outline" style="font-size: 0.8rem; padding: 6px 12px;" onclick="navigateToSection('orders')">Ver Todos</button>
+
+                    <div class="card stat-card">
+                        <div class="card-icon-wrapper income-icon-bg">
+                            <i class="fa-solid fa-dollar-sign"></i>
                         </div>
-                        <div class="table-card" style="box-shadow: none; border: none; padding: 0;">
+                        <div class="card-info">
+                            <span class="card-title">Ingresos Totales</span>
+                            <h2 id="incomeValue">Bs 0,00</h2>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="card-icon-wrapper ticket-icon-bg">
+                            <i class="fa-solid fa-calculator"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">Ticket Promedio</span>
+                            <h2 id="avgTicketValue">Bs 0,00</h2>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="card-icon-wrapper pending-icon-bg">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                        <div class="card-info">
+                            <span class="card-title">Pedidos Pendientes</span>
+                            <h2 id="pendingOrdersCount">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHARTS & DATA GRID -->
+                <div class="dashboard-grid">
+
+                    <!-- Left Column (Main Content) -->
+                    <div class="dashboard-main-content" style="display: flex; flex-direction: column; gap: 24px;">
+
+                        <!-- Line Chart Box -->
+                        <div class="box chart-line-box">
+                            <h3>Gastos vs Ganancias</h3>
+                            <div class="chart-line">
+                                <canvas id="lineChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recent Orders Box -->
+                        <div class="box recent-orders-box">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3 style="margin: 0; font-weight: 800; font-size: 1.15rem;">Últimos Pedidos Recibidos
+                                </h3>
+                                <button class="btn-outline" style="font-size: 0.8rem; padding: 6px 12px;"
+                                    onclick="navigateToSection('orders')">Ver Todos</button>
+                            </div>
+                            <div class="table-card" style="box-shadow: none; border: none; padding: 0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Pedido</th>
+                                            <th>Cliente</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentOrdersTableBody">
+                                        <tr>
+                                            <td colspan="5"
+                                                style="text-align: center; color: var(--muted); padding: 20px;">Cargando
+                                                últimos pedidos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column (Sidebar) -->
+                    <div class="dashboard-sidebar">
+
+                        <!-- Quick Actions Box -->
+                        <div class="box quick-actions-box">
+                            <h3>Accesos Rápidos</h3>
+                            <div class="quick-actions-grid">
+                                <button class="quick-action-btn" onclick="navigateToSection('sales')">
+                                    <i class="fa-solid fa-cart-plus"></i> Nueva Venta
+                                </button>
+                                <button class="quick-action-btn"
+                                    onclick="document.getElementById('openProductModal').click()">
+                                    <i class="fa-solid fa-plus"></i> Producto
+                                </button>
+                                <button class="quick-action-btn"
+                                    onclick="document.getElementById('openClientModal').click()">
+                                    <i class="fa-solid fa-user-plus"></i> Cliente
+                                </button>
+                                <button class="quick-action-btn"
+                                    onclick="navigateToSection('invoices'); document.getElementById('generateReportBtn').click()">
+                                    <i class="fa-solid fa-file-export"></i> Reporte
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Donut Chart Box -->
+                        <div class="box inventory-box">
+                            <h3>Stock por Categoría</h3>
+                            <div class="chart-donut">
+                                <canvas id="donutChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Top Products Box -->
+                        <div class="box products-box">
+                            <h3>Top 10 Productos por Ventas</h3>
+                            <div class="loading-top-products">
+                                <p>Cargando productos...</p>
+                            </div>
+                        </div>
+
+                        <!-- Low Stock Alerts Box -->
+                        <div class="box low-stock-box">
+                            <h3>Alertas de Reabastecimiento</h3>
+                            <div id="lowStockList" class="low-stock-list">
+                                <p style="color: var(--muted); font-size: 0.85rem;">Cargando alertas de stock...</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- INVENTARIO -->
+            <section class="page-section" id="inventory">
+
+                <div class="page-header">
+                    <div>
+                        <p>
+                            Gestiona tus productos, categorías y niveles de stock.
+                        </p>
+                    </div>
+
+                    <button class="btn secondary" id="openMateriaPrimaModal">
+                        <i class="fa-solid fa-plus"></i> Agregar Materia Prima
+                    </button>
+
+                    <button class="btn secondary" id="openProductModal" style="display: none;">
+                        <i class="fa-solid fa-plus"></i> Agregar Producto
+                    </button>
+
+                </div>
+
+                <div class="sub-tabs-container">
+                    <button class="sub-tab-btn active" id="subtabMateriaPrima">
+                        <i class="fa-solid fa-boxes-stacked"></i> Materia Prima
+                    </button>
+                    <button class="sub-tab-btn" id="subtabPersonalizado">
+                        <i class="fa-solid fa-palette"></i> Personalizado
+                    </button>
+                </div>
+
+                <div class="filter-row">
+                    <input type="search" id="inventorySearchInput" placeholder="Buscar productos..." />
+                </div>
+
+                <div class="table-card" id="materiaPrimaTableContainer">
+
+                    <!-- Summary bar -->
+                    <div class="materia-summary-bar" id="materiaSummaryBar">
+                        <div class="materia-summary-item">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                            <div>
+                                <span class="materia-summary-num" id="summaryTotalUnidades">0</span>
+                                <span class="materia-summary-label">Unidades Totales</span>
+                            </div>
+                        </div>
+                        <div class="materia-summary-item">
+                            <i class="fa-solid fa-dollar-sign"></i>
+                            <div>
+                                <span class="materia-summary-num" id="summaryTotalUsd">$0.00</span>
+                                <span class="materia-summary-label">Inversión Total (USD)</span>
+                            </div>
+                        </div>
+                        <div class="materia-summary-item">
+                            <i class="fa-solid fa-bolivar-sign"></i>
+                            <div>
+                                <span class="materia-summary-num" id="summaryTotalBs">Bs 0.00</span>
+                                <span class="materia-summary-label">Inversión Total (Bs)</span>
+                            </div>
+                        </div>
+                        <div class="materia-summary-item">
+                            <i class="fa-solid fa-receipt"></i>
+                            <div>
+                                <span class="materia-summary-num" id="summaryTotalIva">$0.00</span>
+                                <span class="materia-summary-label">IVA Total (USD)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Categoría</th>
+                                    <th>Unidades</th>
+                                    <th>Stock Disp.</th>
+                                    <th>Tasa (Bs/$)</th>
+                                    <th>P. Unit. ($)</th>
+                                    <th>IVA %</th>
+                                    <th>IVA Total ($)</th>
+                                    <th>IVA Total (Bs)</th>
+                                    <th>Total ($)</th>
+                                    <th>Total (Bs)</th>
+                                    <th>Personalizado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materiaPrimaTableBody">
+                                <tr>
+                                    <td colspan="13">Cargando materia prima...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div class="table-card" id="personalizadoTableContainer" style="display: none;">
+
+                    <table class="data-table">
+
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="personalizadoTableBody">
+                            <tr>
+                                <td colspan="6">Cargando productos...</td>
+                            </tr>
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <!-- Image Lightbox Modal -->
+                <div class="img-lightbox-overlay" id="imgLightboxOverlay" onclick="closeImageLightbox()">
+                    <img id="imgLightboxImage" src="" alt="Producto">
+                </div>
+
+            </section>
+
+            <!-- VENTAS -->
+            <section class="page-section" id="sales">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Punto de Venta</h1>
+                        <p>Selecciona un cliente, agrega productos al carrito y genera la factura.</p>
+                    </div>
+                </div>
+
+                <!-- ─── CLIENTE SELECTOR BAR ─── -->
+                <div class="sales-client-bar">
+                    <div class="sales-client-icon">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div class="sales-client-field">
+                        <label for="salesClientSelect">Cliente</label>
+                        <select id="salesClientSelect">
+                            <option value="">Seleccionar cliente...</option>
+                        </select>
+                    </div>
+                    <div id="cartClientLabel" class="sales-client-status">
+                        <i class="fa-solid fa-circle-info"></i> Ningún cliente seleccionado
+                    </div>
+                </div>
+
+                <!-- ─── MAIN POS GRID ─── -->
+                <div class="sales-pos-grid">
+
+                    <!-- LEFT: product browser -->
+                    <div class="sales-products-panel">
+
+                        <div class="sales-search-bar">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="search" id="salesProductSearch"
+                                placeholder="Buscar producto por nombre o categoría...">
+                        </div>
+
+                        <div class="sales-cat-filters" id="salesCatFilters">
+                            <!-- category pills injected by JS -->
+                        </div>
+
+                        <div class="product-cards" id="productCardsContainer">
+                            <div class="product-card skeleton">
+                                <strong>Cargando productos...</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: cart -->
+                    <div class="sales-cart-panel">
+
+                        <div class="cart-header">
+                            <h3><i class="fa-solid fa-basket-shopping"></i> Carrito</h3>
+                            <span class="cart-badge" id="cartItemCount">0</span>
+                        </div>
+
+                        <div id="cartContent" class="cart-items-list">
+                            <div class="cart-empty-state">
+                                <i class="fa-solid fa-cart-shopping"></i>
+                                <p>Agrega productos para comenzar</p>
+                            </div>
+                        </div>
+
+                        <div id="cartFooter" class="cart-footer" style="display:none;">
+                            <div class="cart-summary">
+                                <div class="cart-summary-row">
+                                    <span>Subtotal</span>
+                                    <span id="cartSubtotal">$0.00</span>
+                                </div>
+                                <div class="cart-summary-row iva-row">
+                                    <span>IVA (estimado)</span>
+                                    <span id="cartIva">$0.00</span>
+                                </div>
+                                <div class="cart-summary-row total-row">
+                                    <span>Total</span>
+                                    <span id="cartTotal">$0.00</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-generate-invoice" id="generateInvoiceBtn">
+                                <i class="fa-solid fa-receipt"></i> Generar Factura
+                            </button>
+                            <button type="button" class="btn-clear-cart" id="clearCartBtn">
+                                <i class="fa-solid fa-trash-can"></i> Vaciar carrito
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- PEDIDOS ONLINE -->
+            <section class="page-section" id="orders">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Pedidos Online</h1>
+                        <p>Gestiona los pedidos, verifica pagos y actualiza estados de envío.</p>
+                    </div>
+                    <button class="btn secondary" onclick="loadOrders()">
+                        <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                    </button>
+                </div>
+
+                <!-- Stats bar -->
+                <div class="orders-stats-bar" id="ordersStatsBar">
+                    <div class="order-stat-item" id="statPendientes">
+                        <i class="fa-solid fa-clock"></i>
+                        <div>
+                            <span class="stat-num" id="statNumPendientes">0</span>
+                            <span class="stat-label">Pendientes</span>
+                        </div>
+                    </div>
+                    <div class="order-stat-item" id="statProcesando">
+                        <i class="fa-solid fa-gear"></i>
+                        <div>
+                            <span class="stat-num" id="statNumProcesando">0</span>
+                            <span class="stat-label">Procesando</span>
+                        </div>
+                    </div>
+                    <div class="order-stat-item" id="statEnviados">
+                        <i class="fa-solid fa-truck"></i>
+                        <div>
+                            <span class="stat-num" id="statNumEnviados">0</span>
+                            <span class="stat-label">Enviados</span>
+                        </div>
+                    </div>
+                    <div class="order-stat-item" id="statEntregados">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>
+                            <span class="stat-num" id="statNumEntregados">0</span>
+                            <span class="stat-label">Entregados</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter + search bar -->
+                <div class="orders-filter-bar">
+                    <div class="orders-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" id="ordersSearchInput"
+                            placeholder="Buscar por cliente, correo o # pedido...">
+                    </div>
+                    <div class="orders-status-filters" id="ordersStatusFilters">
+                        <button class="order-filter-pill active" data-status="Todos">Todos</button>
+                        <button class="order-filter-pill" data-status="Pendiente de Verificación">Pendientes</button>
+                        <button class="order-filter-pill" data-status="Procesando">Procesando</button>
+                        <button class="order-filter-pill" data-status="Enviado">Enviados</button>
+                        <button class="order-filter-pill" data-status="Entregado">Entregados</button>
+                    </div>
+                    <button class="btn-select-orders" id="selectAllOrdersBtn" title="Seleccionar varios pedidos">
+                        <i class="fa-regular fa-square-check"></i> Seleccionar
+                    </button>
+                </div>
+
+                <!-- Bulk actions bar -->
+                <div class="orders-bulk-actions" id="ordersBulkActions" style="display: none;">
+                    <div class="bulk-info">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span><span id="selectedOrdersCount">0</span> pedidos seleccionados</span>
+                    </div>
+                    <div class="bulk-btns">
+                        <button class="bulk-btn-cancel" id="cancelBulkSelectionBtn">
+                            <i class="fa-solid fa-xmark"></i> Cancelar
+                        </button>
+                        <button class="bulk-btn-delete" id="deleteSelectedOrdersBtn">
+                            <i class="fa-solid fa-trash"></i> Eliminar Seleccionados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Orders list -->
+                <div id="ordersList" class="orders-list">
+                    <div class="orders-loading">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Cargando pedidos...</p>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- CLIENTES -->
+            <section class="page-section" id="clients">
+
+                <div class="page-header">
+
+                    <div>
+                        <p>
+                            Gestiona tu base de clientes y agrega nuevos contactos.
+                        </p>
+                    </div>
+
+                    <button class="btn secondary" id="openClientModal">
+                        <i class="fa-solid fa-user-plus"></i> Agregar Cliente
+                    </button>
+
+                </div>
+
+                <div class="filter-row">
+                    <input type="search" placeholder="Buscar clientes..." />
+                </div>
+
+                <div class="card-grid" id="clientsList">
+
+                    <div class="client-card">
+
+                        <div class="client-avatar">C</div>
+
+                        <div>
+                            <h3>Cargando clientes...</h3>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- FACTURAS -->
+            <section class="page-section" id="invoices">
+
+                <div class="page-header">
+
+                    <div>
+                        <p>
+                            Revisa y descarga las facturas de ventas más recientes.
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn-primary" id="generateReportBtn"
+                        style="padding: 10px 20px; border-radius: 10px; font-weight: 700;">
+                        <i class="fa-solid fa-file-export"></i> Generar Reporte
+                    </button>
+
+                </div>
+
+                <div class="filter-row">
+                    <input type="search" placeholder="Buscar por número o cliente..." />
+                </div>
+
+                <div class="table-card">
+
+                    <table class="data-table">
+
+                        <thead>
+                            <tr>
+                                <th>N° Factura</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="invoicesTableBody">
+                            <tr>
+                                <td colspan="6">Cargando facturas...</td>
+                            </tr>
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+            <!-- CONFIGURACIÓN -->
+            <section class="page-section" id="settings">
+
+                <div class="page-header">
+
+                    <div>
+                        <p>
+                            Administra las preferencias del sistema y la seguridad.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- TABS -->
+                <div class="settings-tabs">
+
+                    <button class="tab-button active settings-tab-button" data-config="general">
+
+                        General
+
+                    </button>
+
+                    <button class="tab-button settings-tab-button" data-config="seguridad">
+
+                        Seguridad
+
+                    </button>
+
+                    <button class="tab-button settings-tab-button" data-config="usuarios">
+
+                        Usuarios
+
+                    </button>
+
+                    <button class="tab-button settings-tab-button" data-config="historial">
+
+                        Historial
+
+                    </button>
+
+                </div>
+
+                <!-- CONTENIDO -->
+                <div class="settings-content">
+
+                    <!-- GENERAL -->
+                    <div class="settings-panel active" id="general">
+
+                        <!-- TASAS DE CAMBIO BCV -->
+                        <div class="box settings-card">
+                            <h3><i class="fas fa-exchange-alt"></i> Tasas de Cambio BCV</h3>
+                            <p>Configura las tasas de cambio usadas en la tienda</p>
+
+                            <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:15px;">
+                                <div style="flex:1;min-width:180px;">
+                                    <label style="display:block;margin-bottom:5px;color:#aaa;">🇺🇸 USD (Bs por
+                                        $1)</label>
+                                    <input type="number" id="usdRate" step="0.0001" placeholder="Ej: 40.00"
+                                        style="width:100%;">
+                                </div>
+                                <div style="flex:1;min-width:180px;">
+                                    <label style="display:block;margin-bottom:5px;color:#aaa;">🇪🇺 EUR (Bs por
+                                        €1)</label>
+                                    <input type="number" id="eurRate" step="0.0001" placeholder="Ej: 45.00"
+                                        style="width:100%;">
+                                </div>
+                            </div>
+
+                            <div id="bcvInfo"
+                                style="background:rgba(0,255,128,0.05);border:1px solid rgba(0,255,128,0.1);border-radius:8px;padding:12px;margin-bottom:15px;display:none;">
+                                <small style="color:#00ff80;">📡 Última tasa BCV obtenida</small><br>
+                                <span id="bcvUsdDisplay" style="color:#fff;font-weight:600;"></span>
+                                <span style="color:#888;margin:0 8px;">|</span>
+                                <span id="bcvEurDisplay" style="color:#fff;font-weight:600;"></span>
+                                <span style="color:#888;margin:0 8px;">|</span>
+                                <span id="bcvDate" style="color:#888;font-size:0.85rem;"></span>
+                            </div>
+
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                                <button class="btn secondary" id="fetchBcvRate"
+                                    style="display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-cloud-download-alt"></i> Obtener tasa del BCV
+                                </button>
+                                <button class="btn primary" id="saveUsdRate"
+                                    style="display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-save"></i> Guardar tasas
+                                </button>
+                            </div>
+                        </div>
+
+
+
+                    </div>
+
+                    <!-- SEGURIDAD -->
+                    <div class="settings-panel" id="seguridad">
+
+                        <div class="box settings-card">
+
+                            <h3>
+                                Cambiar Contraseña
+                            </h3>
+
+                            <label>
+                                Contraseña Actual
+                            </label>
+
+                            <input type="password" placeholder="Contraseña actual" />
+
+                            <label>
+                                Nueva Contraseña
+                            </label>
+
+                            <input type="password" placeholder="Nueva contraseña" />
+
+                            <label>
+                                Confirmar Nueva Contraseña
+                            </label>
+
+                            <input type="password" placeholder="Confirmar contraseña" />
+
+                            <button class="btn secondary">
+                                Actualizar Contraseña
+                            </button>
+
+                        </div>
+
+                        <div class="box settings-card">
+
+                            <h3>
+                                Cambiar Correo Electrónico
+                            </h3>
+
+                            <label>
+                                Correo Actual
+                            </label>
+
+                            <input type="email" value="adminsublime@gmail.com" readonly />
+
+                            <label>
+                                Nuevo Correo Electrónico
+                            </label>
+
+                            <input type="email" placeholder="Nuevo correo" />
+
+                            <button class="btn secondary">
+                                Actualizar Correo
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                    <!-- USUARIOS -->
+                    <div class="settings-panel" id="usuarios">
+
+                        <div class="box settings-card">
+
+                            <h3>
+                                Crear Usuario Trabajador
+                            </h3>
+
+                            <label>
+                                Nombre Completo
+                            </label>
+
+                            <input type="text" placeholder="Nombre completo" />
+
+                            <label>
+                                Correo Electrónico
+                            </label>
+
+                            <input type="email" placeholder="Correo electrónico" />
+
+                            <label>
+                                Contraseña
+                            </label>
+
+                            <input type="password" placeholder="Contraseña" />
+
+                            <button class="btn secondary">
+                                Crear Usuario
+                            </button>
+
+                        </div>
+
+                        <div class="box settings-card">
+
+                            <h3>
+                                Usuarios Trabajadores
+                            </h3>
+
                             <table class="data-table">
+
                                 <thead>
+
                                     <tr>
-                                        <th>Pedido</th>
-                                        <th>Cliente</th>
-                                        <th>Fecha</th>
-                                        <th>Total</th>
+                                        <th>Nombre</th>
+                                        <th>Correo</th>
+                                        <th>Rol</th>
+                                        <th>Fecha Creación</th>
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    <tr>
+                                        <td>Juan Pérez</td>
+                                        <td>juan@sublime.com</td>
+                                        <td>Trabajador</td>
+                                        <td>2026-01-15</td>
+                                    </tr>
+
+                                    <tr>
+                                        <td>María García</td>
+                                        <td>maria@sublime.com</td>
+                                        <td>Trabajador</td>
+                                        <td>2026-02-20</td>
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                    <!-- HISTORIAL -->
+                    <div class="settings-panel" id="historial">
+
+                        <div class="box settings-card">
+
+                            <h3>
+                                Historial de Inicio de Sesión
+                            </h3>
+
+                            <table class="data-table">
+
+                                <thead>
+
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Correo</th>
+                                        <th>Fecha y Hora</th>
+                                        <th>Dirección IP</th>
                                         <th>Estado</th>
                                     </tr>
+
                                 </thead>
-                                <tbody id="recentOrdersTableBody">
+
+                                <tbody>
+
                                     <tr>
-                                        <td colspan="5" style="text-align: center; color: var(--muted); padding: 20px;">Cargando últimos pedidos...</td>
+                                        <td>Administrador</td>
+                                        <td>adminsublime@gmail.com</td>
+                                        <td>2026-04-27 09:30</td>
+                                        <td>192.168.1.100</td>
+                                        <td>Exitoso</td>
                                     </tr>
+
+                                    <tr>
+                                        <td>Juan Pérez</td>
+                                        <td>juan@sublime.com</td>
+                                        <td>2026-04-27 08:15</td>
+                                        <td>192.168.1.101</td>
+                                        <td>Exitoso</td>
+                                    </tr>
+
                                 </tbody>
+
                             </table>
-                        </div>
-                    </div>
 
-                </div>
-
-                <!-- Right Column (Sidebar) -->
-                <div class="dashboard-sidebar">
-                    
-                    <!-- Quick Actions Box -->
-                    <div class="box quick-actions-box">
-                        <h3>Accesos Rápidos</h3>
-                        <div class="quick-actions-grid">
-                            <button class="quick-action-btn" onclick="navigateToSection('sales')">
-                                <i class="fa-solid fa-cart-plus"></i> Nueva Venta
-                            </button>
-                            <button class="quick-action-btn" onclick="document.getElementById('openProductModal').click()">
-                                <i class="fa-solid fa-plus"></i> Producto
-                            </button>
-                            <button class="quick-action-btn" onclick="document.getElementById('openClientModal').click()">
-                                <i class="fa-solid fa-user-plus"></i> Cliente
-                            </button>
-                            <button class="quick-action-btn" onclick="navigateToSection('invoices'); document.getElementById('generateReportBtn').click()">
-                                <i class="fa-solid fa-file-export"></i> Reporte
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Donut Chart Box -->
-                    <div class="box inventory-box">
-                        <h3>Stock por Categoría</h3>
-                        <div class="chart-donut">
-                            <canvas id="donutChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <!-- Top Products Box -->
-                    <div class="box products-box">
-                        <h3>Top 10 Productos por Ventas</h3>
-                        <div class="loading-top-products">
-                            <p>Cargando productos...</p>
-                        </div>
-                    </div>
-
-                    <!-- Low Stock Alerts Box -->
-                    <div class="box low-stock-box">
-                        <h3>Alertas de Reabastecimiento</h3>
-                        <div id="lowStockList" class="low-stock-list">
-                            <p style="color: var(--muted); font-size: 0.85rem;">Cargando alertas de stock...</p>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <!-- INVENTARIO -->
-        <section class="page-section" id="inventory">
-
-            <div class="page-header">
-                <div>
-                    <p>
-                        Gestiona tus productos, categorías y niveles de stock.
-                    </p>
-                </div>
-
-                <button class="btn secondary" id="openMateriaPrimaModal">
-                    <i class="fa-solid fa-plus"></i> Agregar Materia Prima
-                </button>
-
-                <button class="btn secondary" id="openProductModal" style="display: none;">
-                    <i class="fa-solid fa-plus"></i> Agregar Producto
-                </button>
-
-            </div>
-
-            <div class="sub-tabs-container">
-                <button class="sub-tab-btn active" id="subtabMateriaPrima">
-                    <i class="fa-solid fa-boxes-stacked"></i> Materia Prima
-                </button>
-                <button class="sub-tab-btn" id="subtabPersonalizado">
-                    <i class="fa-solid fa-palette"></i> Personalizado
-                </button>
-            </div>
-
-            <div class="filter-row">
-                <input type="search" id="inventorySearchInput" placeholder="Buscar productos..." />
-            </div>
-
-            <div class="table-card" id="materiaPrimaTableContainer">
-
-                <!-- Summary bar -->
-                <div class="materia-summary-bar" id="materiaSummaryBar">
-                    <div class="materia-summary-item">
-                        <i class="fa-solid fa-boxes-stacked"></i>
-                        <div>
-                            <span class="materia-summary-num" id="summaryTotalUnidades">0</span>
-                            <span class="materia-summary-label">Unidades Totales</span>
-                        </div>
-                    </div>
-                    <div class="materia-summary-item">
-                        <i class="fa-solid fa-dollar-sign"></i>
-                        <div>
-                            <span class="materia-summary-num" id="summaryTotalUsd">$0.00</span>
-                            <span class="materia-summary-label">Inversión Total (USD)</span>
-                        </div>
-                    </div>
-                    <div class="materia-summary-item">
-                        <i class="fa-solid fa-bolivar-sign"></i>
-                        <div>
-                            <span class="materia-summary-num" id="summaryTotalBs">Bs 0.00</span>
-                            <span class="materia-summary-label">Inversión Total (Bs)</span>
-                        </div>
-                    </div>
-                    <div class="materia-summary-item">
-                        <i class="fa-solid fa-receipt"></i>
-                        <div>
-                            <span class="materia-summary-num" id="summaryTotalIva">$0.00</span>
-                            <span class="materia-summary-label">IVA Total (USD)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Categoría</th>
-                            <th>Unidades</th>
-                            <th>Stock Disp.</th>
-                            <th>Tasa (Bs/$)</th>
-                            <th>P. Unit. ($)</th>
-                            <th>IVA %</th>
-                            <th>IVA Total ($)</th>
-                            <th>IVA Total (Bs)</th>
-                            <th>Total ($)</th>
-                            <th>Total (Bs)</th>
-                            <th>Personalizado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="materiaPrimaTableBody">
-                        <tr>
-                            <td colspan="13">Cargando materia prima...</td>
-                        </tr>
-                    </tbody>
-                </table>
-                </div>
-
-            </div>
-
-            <div class="table-card" id="personalizadoTableContainer" style="display: none;">
-
-                <table class="data-table">
-
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Categoría</th>
-                            <th>Precio</th>
-                            <th>Stock</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="personalizadoTableBody">
-                        <tr>
-                            <td colspan="5">Cargando productos...</td>
-                        </tr>
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-        <!-- VENTAS -->
-        <section class="page-section" id="sales">
-
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">Punto de Venta</h1>
-                    <p>Selecciona un cliente, agrega productos al carrito y genera la factura.</p>
-                </div>
-            </div>
-
-            <!-- ─── CLIENTE SELECTOR BAR ─── -->
-            <div class="sales-client-bar">
-                <div class="sales-client-icon">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-                <div class="sales-client-field">
-                    <label for="salesClientSelect">Cliente</label>
-                    <select id="salesClientSelect">
-                        <option value="">Seleccionar cliente...</option>
-                    </select>
-                </div>
-                <div id="cartClientLabel" class="sales-client-status">
-                    <i class="fa-solid fa-circle-info"></i> Ningún cliente seleccionado
-                </div>
-            </div>
-
-            <!-- ─── MAIN POS GRID ─── -->
-            <div class="sales-pos-grid">
-
-                <!-- LEFT: product browser -->
-                <div class="sales-products-panel">
-
-                    <div class="sales-search-bar">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="search" id="salesProductSearch" placeholder="Buscar producto por nombre o categoría...">
-                    </div>
-
-                    <div class="sales-cat-filters" id="salesCatFilters">
-                        <!-- category pills injected by JS -->
-                    </div>
-
-                    <div class="product-cards" id="productCardsContainer">
-                        <div class="product-card skeleton">
-                            <strong>Cargando productos...</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT: cart -->
-                <div class="sales-cart-panel">
-
-                    <div class="cart-header">
-                        <h3><i class="fa-solid fa-basket-shopping"></i> Carrito</h3>
-                        <span class="cart-badge" id="cartItemCount">0</span>
-                    </div>
-
-                    <div id="cartContent" class="cart-items-list">
-                        <div class="cart-empty-state">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            <p>Agrega productos para comenzar</p>
-                        </div>
-                    </div>
-
-                    <div id="cartFooter" class="cart-footer" style="display:none;">
-                        <div class="cart-summary">
-                            <div class="cart-summary-row">
-                                <span>Subtotal</span>
-                                <span id="cartSubtotal">$0.00</span>
-                            </div>
-                            <div class="cart-summary-row iva-row">
-                                <span>IVA (estimado)</span>
-                                <span id="cartIva">$0.00</span>
-                            </div>
-                            <div class="cart-summary-row total-row">
-                                <span>Total</span>
-                                <span id="cartTotal">$0.00</span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-generate-invoice" id="generateInvoiceBtn">
-                            <i class="fa-solid fa-receipt"></i> Generar Factura
-                        </button>
-                        <button type="button" class="btn-clear-cart" id="clearCartBtn">
-                            <i class="fa-solid fa-trash-can"></i> Vaciar carrito
-                        </button>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- PEDIDOS ONLINE -->
-        <section class="page-section" id="orders">
-
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">Pedidos Online</h1>
-                    <p>Gestiona los pedidos, verifica pagos y actualiza estados de envío.</p>
-                </div>
-                <button class="btn secondary" onclick="loadOrders()">
-                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar
-                </button>
-            </div>
-
-            <!-- Stats bar -->
-            <div class="orders-stats-bar" id="ordersStatsBar">
-                <div class="order-stat-item" id="statPendientes">
-                    <i class="fa-solid fa-clock"></i>
-                    <div>
-                        <span class="stat-num" id="statNumPendientes">0</span>
-                        <span class="stat-label">Pendientes</span>
-                    </div>
-                </div>
-                <div class="order-stat-item" id="statProcesando">
-                    <i class="fa-solid fa-gear"></i>
-                    <div>
-                        <span class="stat-num" id="statNumProcesando">0</span>
-                        <span class="stat-label">Procesando</span>
-                    </div>
-                </div>
-                <div class="order-stat-item" id="statEnviados">
-                    <i class="fa-solid fa-truck"></i>
-                    <div>
-                        <span class="stat-num" id="statNumEnviados">0</span>
-                        <span class="stat-label">Enviados</span>
-                    </div>
-                </div>
-                <div class="order-stat-item" id="statEntregados">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>
-                        <span class="stat-num" id="statNumEntregados">0</span>
-                        <span class="stat-label">Entregados</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filter + search bar -->
-            <div class="orders-filter-bar">
-                <div class="orders-search-wrap">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="search" id="ordersSearchInput" placeholder="Buscar por cliente, correo o # pedido...">
-                </div>
-                <div class="orders-status-filters" id="ordersStatusFilters">
-                    <button class="order-filter-pill active" data-status="Todos">Todos</button>
-                    <button class="order-filter-pill" data-status="Pendiente de Verificación">Pendientes</button>
-                    <button class="order-filter-pill" data-status="Procesando">Procesando</button>
-                    <button class="order-filter-pill" data-status="Enviado">Enviados</button>
-                    <button class="order-filter-pill" data-status="Entregado">Entregados</button>
-                </div>
-            </div>
-
-            <!-- Bulk actions bar -->
-            <div class="orders-bulk-actions" id="ordersBulkActions" style="display: none;">
-                <div class="bulk-info">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                    <span><span id="selectedOrdersCount">0</span> pedidos seleccionados</span>
-                </div>
-                <div class="bulk-btns">
-                    <button class="bulk-btn-cancel" id="cancelBulkSelectionBtn">
-                        <i class="fa-solid fa-xmark"></i> Cancelar
-                    </button>
-                    <button class="bulk-btn-delete" id="deleteSelectedOrdersBtn">
-                        <i class="fa-solid fa-trash"></i> Eliminar Seleccionados
-                    </button>
-                </div>
-            </div>
-
-            <!-- Orders list -->
-            <div id="ordersList" class="orders-list">
-                <div class="orders-loading">
-                    <i class="fa-solid fa-spinner fa-spin"></i>
-                    <p>Cargando pedidos...</p>
-                </div>
-            </div>
-
-        </section>
-
-
-        <!-- CLIENTES -->
-        <section class="page-section" id="clients">
-
-            <div class="page-header">
-
-                <div>
-                    <p>
-                        Gestiona tu base de clientes y agrega nuevos contactos.
-                    </p>
-                </div>
-
-                <button class="btn secondary" id="openClientModal">
-                    <i class="fa-solid fa-user-plus"></i> Agregar Cliente
-                </button>
-
-            </div>
-
-            <div class="filter-row">
-                <input type="search" placeholder="Buscar clientes..." />
-            </div>
-
-            <div class="card-grid" id="clientsList">
-
-                <div class="client-card">
-
-                    <div class="client-avatar">C</div>
-
-                    <div>
-                        <h3>Cargando clientes...</h3>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <!-- FACTURAS -->
-        <section class="page-section" id="invoices">
-
-            <div class="page-header">
-
-                <div>
-                    <p>
-                        Revisa y descarga las facturas de ventas más recientes.
-                    </p>
-                </div>
-
-                <button type="button" class="btn-primary" id="generateReportBtn" style="padding: 10px 20px; border-radius: 10px; font-weight: 700;">
-                    <i class="fa-solid fa-file-export"></i> Generar Reporte
-                </button>
-
-            </div>
-
-            <div class="filter-row">
-                <input type="search" placeholder="Buscar por número o cliente..." />
-            </div>
-
-            <div class="table-card">
-
-                <table class="data-table">
-
-                    <thead>
-                        <tr>
-                            <th>N° Factura</th>
-                            <th>Cliente</th>
-                            <th>Fecha</th>
-                            <th>Items</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="invoicesTableBody">
-                        <tr>
-                            <td colspan="6">Cargando facturas...</td>
-                        </tr>
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-        <!-- CONFIGURACIÓN -->
-        <section class="page-section" id="settings">
-
-            <div class="page-header">
-
-                <div>
-                    <p>
-                        Administra las preferencias del sistema y la seguridad.
-                    </p>
-                </div>
-
-            </div>
-
-            <!-- TABS -->
-            <div class="settings-tabs">
-
-                <button class="tab-button active settings-tab-button"
-                        data-config="general">
-
-                    General
-
-                </button>
-
-                <button class="tab-button settings-tab-button"
-                        data-config="seguridad">
-
-                    Seguridad
-
-                </button>
-
-                <button class="tab-button settings-tab-button"
-                        data-config="usuarios">
-
-                    Usuarios
-
-                </button>
-
-                <button class="tab-button settings-tab-button"
-                        data-config="historial">
-
-                    Historial
-
-                </button>
-
-            </div>
-
-            <!-- CONTENIDO -->
-            <div class="settings-content">
-
-                <!-- GENERAL -->
-                <div class="settings-panel active" id="general">
-
-                    <!-- TASAS DE CAMBIO BCV -->
-                    <div class="box settings-card">
-                        <h3><i class="fas fa-exchange-alt"></i> Tasas de Cambio BCV</h3>
-                        <p>Configura las tasas de cambio usadas en la tienda</p>
-
-                        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:15px;">
-                            <div style="flex:1;min-width:180px;">
-                                <label style="display:block;margin-bottom:5px;color:#aaa;">🇺🇸 USD (Bs por $1)</label>
-                                <input type="number" id="usdRate" step="0.0001" placeholder="Ej: 40.00" style="width:100%;">
-                            </div>
-                            <div style="flex:1;min-width:180px;">
-                                <label style="display:block;margin-bottom:5px;color:#aaa;">🇪🇺 EUR (Bs por €1)</label>
-                                <input type="number" id="eurRate" step="0.0001" placeholder="Ej: 45.00" style="width:100%;">
-                            </div>
                         </div>
 
-                        <div id="bcvInfo" style="background:rgba(0,255,128,0.05);border:1px solid rgba(0,255,128,0.1);border-radius:8px;padding:12px;margin-bottom:15px;display:none;">
-                            <small style="color:#00ff80;">📡 Última tasa BCV obtenida</small><br>
-                            <span id="bcvUsdDisplay" style="color:#fff;font-weight:600;"></span>
-                            <span style="color:#888;margin:0 8px;">|</span>
-                            <span id="bcvEurDisplay" style="color:#fff;font-weight:600;"></span>
-                            <span style="color:#888;margin:0 8px;">|</span>
-                            <span id="bcvDate" style="color:#888;font-size:0.85rem;"></span>
-                        </div>
-
-                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                            <button class="btn secondary" id="fetchBcvRate" style="display:inline-flex;align-items:center;gap:6px;">
-                                <i class="fas fa-cloud-download-alt"></i> Obtener tasa del BCV
-                            </button>
-                            <button class="btn primary" id="saveUsdRate" style="display:inline-flex;align-items:center;gap:6px;">
-                                <i class="fas fa-save"></i> Guardar tasas
-                            </button>
-                        </div>
-                    </div>
-
-
-
-                </div>
-
-                <!-- SEGURIDAD -->
-                <div class="settings-panel" id="seguridad">
-
-                    <div class="box settings-card">
-
-                        <h3>
-                            Cambiar Contraseña
-                        </h3>
-
-                        <label>
-                            Contraseña Actual
-                        </label>
-
-                        <input type="password"
-                            placeholder="Contraseña actual" />
-
-                        <label>
-                            Nueva Contraseña
-                        </label>
-
-                        <input type="password"
-                            placeholder="Nueva contraseña" />
-
-                        <label>
-                            Confirmar Nueva Contraseña
-                        </label>
-
-                        <input type="password"
-                            placeholder="Confirmar contraseña" />
-
-                        <button class="btn secondary">
-                            Actualizar Contraseña
-                        </button>
-
-                    </div>
-
-                    <div class="box settings-card">
-
-                        <h3>
-                            Cambiar Correo Electrónico
-                        </h3>
-
-                        <label>
-                            Correo Actual
-                        </label>
-
-                        <input type="email"
-                            value="admin@sublime.com"
-                            readonly />
-
-                        <label>
-                            Nuevo Correo Electrónico
-                        </label>
-
-                        <input type="email"
-                            placeholder="Nuevo correo" />
-
-                        <button class="btn secondary">
-                            Actualizar Correo
-                        </button>
-
                     </div>
 
                 </div>
 
-                <!-- USUARIOS -->
-                <div class="settings-panel" id="usuarios">
+            </section>
+        </main>
 
-                    <div class="box settings-card">
+    </div>
 
-                        <h3>
-                            Crear Usuario Trabajador
-                        </h3>
-
-                        <label>
-                            Nombre Completo
-                        </label>
-
-                        <input type="text"
-                            placeholder="Nombre completo" />
-
-                        <label>
-                            Correo Electrónico
-                        </label>
-
-                        <input type="email"
-                            placeholder="Correo electrónico" />
-
-                        <label>
-                            Contraseña
-                        </label>
-
-                        <input type="password"
-                            placeholder="Contraseña" />
-
-                        <button class="btn secondary">
-                            Crear Usuario
-                        </button>
-
-                    </div>
-
-                    <div class="box settings-card">
-
-                        <h3>
-                            Usuarios Trabajadores
-                        </h3>
-
-                        <table class="data-table">
-
-                            <thead>
-
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Correo</th>
-                                    <th>Rol</th>
-                                    <th>Fecha Creación</th>
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                <tr>
-                                    <td>Juan Pérez</td>
-                                    <td>juan@sublime.com</td>
-                                    <td>Trabajador</td>
-                                    <td>2026-01-15</td>
-                                </tr>
-
-                                <tr>
-                                    <td>María García</td>
-                                    <td>maria@sublime.com</td>
-                                    <td>Trabajador</td>
-                                    <td>2026-02-20</td>
-                                </tr>
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-                <!-- HISTORIAL -->
-                <div class="settings-panel" id="historial">
-
-                    <div class="box settings-card">
-
-                        <h3>
-                            Historial de Inicio de Sesión
-                        </h3>
-
-                        <table class="data-table">
-
-                            <thead>
-
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>Correo</th>
-                                    <th>Fecha y Hora</th>
-                                    <th>Dirección IP</th>
-                                    <th>Estado</th>
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                <tr>
-                                    <td>Administrador</td>
-                                    <td>admin@sublime.com</td>
-                                    <td>2026-04-27 09:30</td>
-                                    <td>192.168.1.100</td>
-                                    <td>Exitoso</td>
-                                </tr>
-
-                                <tr>
-                                    <td>Juan Pérez</td>
-                                    <td>juan@sublime.com</td>
-                                    <td>2026-04-27 08:15</td>
-                                    <td>192.168.1.101</td>
-                                    <td>Exitoso</td>
-                                </tr>
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-    </main>
-
-</div>
-
-<!-- =========================
+    <!-- =========================
      MODAL GENERAR REPORTE
 ========================= -->
 
-<div class="report-modal" id="modal">
+    <div class="report-modal" id="modal">
 
-    <div class="report-modal-content">
+        <div class="report-modal-content">
 
-        <!-- HEADER -->
-        <div class="report-header">
+            <!-- HEADER -->
+            <div class="report-header">
 
-            <div>
+                <div>
 
-                <h2>
-                    Generar Reporte de Ventas
-                </h2>
+                    <h2>
+                        Generar Reporte de Ventas
+                    </h2>
 
-                <p>
-                    Selecciona el tipo de reporte y formato que deseas generar
-                </p>
+                    <p>
+                        Selecciona el tipo de reporte y formato que deseas generar
+                    </p>
 
-            </div>
+                </div>
 
-            <span class="close-modal" id="closeModal">
-                &times;
-            </span>
-
-        </div>
-
-        <!-- TIPO -->
-        <div class="report-group">
-
-            <label>
-                Tipo de Reporte
-            </label>
-
-            <select id="tipoReporte">
-
-                <option value="mensual">
-                    Mensual
-                </option>
-
-                <option value="diario">
-                    Diario
-                </option>
-
-                <option value="anual">
-                    Anual
-                </option>
-
-                <option value="semanal">
-                    Semanal
-                </option>
-
-                <option value="personalizado">
-                    Personalizado
-                </option>
-
-            </select>
-
-        </div>
-
-        <!-- FORMATO -->
-        <div class="report-group">
-
-            <label>
-                Formato
-            </label>
-
-            <select id="formato">
-
-                <option value="pdf">
-                    PDF
-                </option>
-
-                <option value="excel">
-                    Excel
-                </option>
-
-            </select>
-
-        </div>
-
-        <!-- INFO -->
-        <div class="report-info">
-
-            <div class="report-icon">
-                📅
-            </div>
-
-            <div>
-
-                <h4 id="reportTitle">
-                    Reporte Mensual
-                </h4>
-
-                <p id="descripcion">
-
-                    Incluirá: métricas generales,
-                    top productos,
-                    ventas detalladas
-                    y análisis de inventario
-
-                </p>
+                <span class="close-modal" id="closeModal">
+                    &times;
+                </span>
 
             </div>
 
-        </div>
+            <!-- TIPO -->
+            <div class="report-group">
 
-        <!-- BOTONES -->
-        <div class="report-actions">
+                <label>
+                    Tipo de Reporte
+                </label>
 
-            <button id="cancelar" class="btn-cancel">
-                Cancelar
-            </button>
+                <select id="tipoReporte">
 
-            <button id="descargar" class="btn-download">
-                ⬇ Descargar
-            </button>
+                    <option value="mensual">
+                        Mensual
+                    </option>
+
+                    <option value="diario">
+                        Diario
+                    </option>
+
+                    <option value="anual">
+                        Anual
+                    </option>
+
+                    <option value="semanal">
+                        Semanal
+                    </option>
+
+                    <option value="personalizado">
+                        Personalizado
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- FORMATO -->
+            <div class="report-group">
+
+                <label>
+                    Formato
+                </label>
+
+                <select id="formato">
+
+                    <option value="pdf">
+                        PDF
+                    </option>
+
+                    <option value="excel">
+                        Excel
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- INFO -->
+            <div class="report-info">
+
+                <div class="report-icon">
+                    📅
+                </div>
+
+                <div>
+
+                    <h4 id="reportTitle">
+                        Reporte Mensual
+                    </h4>
+
+                    <p id="descripcion">
+
+                        Incluirá: métricas generales,
+                        top productos,
+                        ventas detalladas
+                        y análisis de inventario
+
+                    </p>
+
+                </div>
+
+            </div>
+
+            <!-- BOTONES -->
+            <div class="report-actions">
+
+                <button id="cancelar" class="btn-cancel">
+                    Cancelar
+                </button>
+
+                <button id="descargar" class="btn-download">
+                    ⬇ Descargar
+                </button>
+
+            </div>
 
         </div>
 
     </div>
 
-</div>
-
-<!-- =========================
+    <!-- =========================
      MODAL AGREGAR PRODUCTO
 ========================= -->
 
-<div class="product-modal" id="productModal">
+    <div class="product-modal" id="productModal">
 
-    <div class="product-modal-content">
+        <div class="product-modal-content">
 
-        <!-- HEADER -->
-        <div class="product-header">
+            <!-- HEADER -->
+            <div class="product-header">
 
-            <h2>Agregar Producto</h2>
+                <h2>Agregar Producto</h2>
 
-            <span class="close-product-modal" id="closeProductModal">
-                &times;
-            </span>
+                <span class="close-product-modal" id="closeProductModal">
+                    &times;
+                </span>
+
+            </div>
+
+            <!-- FORMULARIO -->
+            <form id="productForm">
+
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Nombre del Producto</label>
+                        <input type="text" id="productName" placeholder="Ej: Franela Negra" required>
+                    </div>
+
+                    <div class="product-group">
+                        <label>Categoría</label>
+                        <select id="productCategory" required
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="">Seleccionar...</option>
+                            <option value="Termos">Termos</option>
+                            <option value="Mousepads">Mousepads</option>
+                            <option value="Boligrafos">Bolígrafos</option>
+                            <option value="camisas">Camisas</option>
+                            <option value="tazas">Tazas</option>
+                            <option value="gorras">Gorras</option>
+                            <option value="llaveros">Llaveros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="product-row-3col">
+                    <div class="product-group">
+                        <label>Precio en Dólares ($)</label>
+                        <input type="number" id="productPrice" placeholder="0.00" step="0.01" required>
+                    </div>
+
+                    <div class="product-group">
+                        <label>Precio en Bolívares (Bs)</label>
+                        <input type="number" id="productPriceBs" placeholder="0.00" step="0.01">
+                    </div>
+
+                    <div class="product-group">
+                        <label>Porcentaje de IVA (%)</label>
+                        <input type="number" id="productIva" placeholder="16" value="16" min="0" max="100" required>
+                    </div>
+                </div>
+
+                <!-- Dynamic calculation display -->
+                <div class="iva-calculation-card"
+                    style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                        <span
+                            style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose
+                            de Precios (Con IVA)</span>
+                        <span
+                            style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo
+                            en vivo</span>
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Dólares (USD)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">$<span id="calcBaseUsd">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="calcIvaPctUsd">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+$<span
+                                        id="calcIvaUsd">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total USD:</span>
+                                <span style="font-weight: 800; color: var(--primary);">$<span
+                                        id="calcTotalUsd">0.00</span></span>
+                            </div>
+                        </div>
+                        <div
+                            style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Bolívares (VES)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">Bs <span id="calcBaseBs">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="calcIvaPctBs">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+Bs <span
+                                        id="calcIvaBs">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total VES:</span>
+                                <span style="font-weight: 800; color: var(--primary);">Bs <span
+                                        id="calcTotalBs">0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Stock</label>
+                        <input type="number" id="productStock" placeholder="0" required>
+                    </div>
+
+                    <div class="product-group">
+                        <label>Imagen del Producto</label>
+                        <label for="productImagen" class="file-upload-label">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar archivo
+                        </label>
+                        <input type="file" id="productImagen" accept="image/*" style="display: none;">
+                        <span id="productImagenName" class="file-name-display">Ningún archivo seleccionado</span>
+                    </div>
+                </div>
+
+                <div class="product-group">
+                    <label>Descripción</label>
+                    <textarea id="productDescription" placeholder="Descripción del producto"></textarea>
+                </div>
+
+                <!-- BOTONES -->
+                <div class="product-actions">
+
+                    <button type="button" class="btn-cancel-product" id="cancelProduct">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="submit" class="btn-save-product">
+
+                        Guardar Producto
+
+                    </button>
+
+                </div>
+
+            </form>
 
         </div>
 
-        <!-- FORMULARIO -->
-        <form id="productForm">
+    </div>
+
+    <!-- =========================
+     MODALS MATERIA PRIMA
+========================= -->
+
+    <!-- AGREGAR MATERIA PRIMA -->
+    <div class="product-modal" id="materiaPrimaModal">
+        <div class="product-modal-content">
+            <div class="product-header">
+                <h2>Agregar Materia Prima</h2>
+                <span class="close-product-modal" id="closeMateriaPrimaModal">&times;</span>
+            </div>
+
+            <form id="materiaPrimaForm">
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Fecha</label>
+                        <input type="date" id="materiaFecha" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Categoría</label>
+                        <select id="materiaCategoria" required
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="">Seleccionar...</option>
+                            <option value="Camisas">Camisas</option>
+                            <option value="Tazas">Tazas</option>
+                            <option value="Gorras">Gorras</option>
+                            <option value="Mousepads">Mousepads</option>
+                            <option value="Llaveros">Llaveros</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Condicional para Camisas (Talla y Grupo de edad) -->
+                <div class="product-row" id="materiaCamisaExtra"
+                    style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
+                    <div class="product-group">
+                        <label>Talla</label>
+                        <select id="materiaTalla"
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                        </select>
+                    </div>
+                    <div class="product-group">
+                        <label>Grupo de Edad</label>
+                        <select id="materiaGrupoEdad"
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="Niño/Niña">Niño/Niña</option>
+                            <option value="Adolescente">Adolescente</option>
+                            <option value="Adulto">Adulto</option>
+                            <option value="Mayor de edad">Mayor de edad</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="product-row-3col">
+                    <div class="product-group">
+                        <label>Unidades</label>
+                        <input type="number" id="materiaUnidades" placeholder="0" min="1" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Tasa de Cambio (Bs)</label>
+                        <input type="number" id="materiaTasa" placeholder="0.00" step="0.01"
+                            onblur="this.value = parseFloat(this.value || 0).toFixed(2)" required>
+                    </div>
+                    <div class="product-group">
+                        <label>P. Unitario ($)</label>
+                        <input type="number" id="materiaPrecioUnitario" placeholder="0.00" step="0.01"
+                            onblur="this.value = parseFloat(this.value || 0).toFixed(2)" required>
+                    </div>
+                </div>
+
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Porcentaje de IVA (%)</label>
+                        <input type="number" id="materiaIva" placeholder="16" value="16" min="0" max="100" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Personalizado (Ref / Notas)</label>
+                        <input type="text" id="materiaPersonalizado" placeholder="Ej: Pedido Especial #102">
+                    </div>
+                </div>
+
+                <!-- Desglose de Subtotal -->
+                <div class="iva-calculation-card"
+                    style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                        <span
+                            style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal
+                            de Compra (Con IVA)</span>
+                        <span
+                            style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo
+                            en vivo</span>
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Dólares (USD)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">$<span id="materiaCalcBaseUsd">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="materiaCalcIvaPctUsd">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+$<span
+                                        id="materiaCalcIvaUsd">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total USD:</span>
+                                <span style="font-weight: 800; color: var(--primary);">$<span
+                                        id="materiaCalcTotalUsd">0.00</span></span>
+                            </div>
+                        </div>
+                        <div
+                            style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Bolívares (VES)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">Bs <span id="materiaCalcBaseBs">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="materiaCalcIvaPctBs">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+Bs <span
+                                        id="materiaCalcIvaBs">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total VES:</span>
+                                <span style="font-weight: 800; color: var(--primary);">Bs <span
+                                        id="materiaCalcTotalBs">0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-actions">
+                    <button type="button" class="btn-cancel-product" id="cancelMateriaPrima">Cancelar</button>
+                    <button type="submit" class="btn-save-product">Guardar Materia Prima</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDITAR MATERIA PRIMA -->
+    <div class="edit-modal" id="editMateriaPrimaModal">
+        <div class="edit-modal-content">
+            <div class="product-header">
+                <h2>Editar Materia Prima</h2>
+                <span class="close-product-modal" id="closeEditMateriaPrimaModal">&times;</span>
+            </div>
+
+            <form id="editMateriaPrimaForm">
+                <input type="hidden" id="editMateriaId">
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Fecha</label>
+                        <input type="date" id="editMateriaFecha" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Categoría</label>
+                        <select id="editMateriaCategoria" required
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="Camisas">Camisas</option>
+                            <option value="Tazas">Tazas</option>
+                            <option value="Gorras">Gorras</option>
+                            <option value="Mousepads">Mousepads</option>
+                            <option value="Llaveros">Llaveros</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Condicional para Camisas (Talla y Grupo de edad) -->
+                <div class="product-row" id="editMateriaCamisaExtra"
+                    style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
+                    <div class="product-group">
+                        <label>Talla</label>
+                        <select id="editMateriaTalla"
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                        </select>
+                    </div>
+                    <div class="product-group">
+                        <label>Grupo de Edad</label>
+                        <select id="editMateriaGrupoEdad"
+                            style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                            <option value="Niño/Niña">Niño/Niña</option>
+                            <option value="Adolescente">Adolescente</option>
+                            <option value="Adulto">Adulto</option>
+                            <option value="Mayor de edad">Mayor de edad</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="product-row-3col">
+                    <div class="product-group">
+                        <label>Unidades</label>
+                        <input type="number" id="editMateriaUnidades" placeholder="0" min="1" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Tasa de Cambio (Bs)</label>
+                        <input type="number" id="editMateriaTasa" placeholder="0.00" step="0.01"
+                            onblur="this.value = parseFloat(this.value || 0).toFixed(2)" required>
+                    </div>
+                    <div class="product-group">
+                        <label>P. Unitario ($)</label>
+                        <input type="number" id="editMateriaPrecioUnitario" placeholder="0.00" step="0.01"
+                            onblur="this.value = parseFloat(this.value || 0).toFixed(2)" required>
+                    </div>
+                </div>
+
+                <div class="product-row">
+                    <div class="product-group">
+                        <label>Porcentaje de IVA (%)</label>
+                        <input type="number" id="editMateriaIva" placeholder="16" min="0" max="100" required>
+                    </div>
+                    <div class="product-group">
+                        <label>Personalizado (Ref / Notas)</label>
+                        <input type="text" id="editMateriaPersonalizado" placeholder="Ej: Pedido Especial #102">
+                    </div>
+                </div>
+
+                <!-- Desglose de Subtotal -->
+                <div class="iva-calculation-card"
+                    style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                        <span
+                            style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal
+                            de Compra (Con IVA)</span>
+                        <span
+                            style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo
+                            en vivo</span>
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Dólares (USD)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">$<span id="editMateriaCalcBaseUsd">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="editMateriaCalcIvaPctUsd">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+$<span
+                                        id="editMateriaCalcIvaUsd">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total USD:</span>
+                                <span style="font-weight: 800; color: var(--primary);">$<span
+                                        id="editMateriaCalcTotalUsd">0.00</span></span>
+                            </div>
+                        </div>
+                        <div
+                            style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                            <div
+                                style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                                Bolívares (VES)</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Base:</span>
+                                <span style="font-weight: 600;">Bs <span id="editMateriaCalcBaseBs">0.00</span></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>IVA (<span id="editMateriaCalcIvaPctBs">16.00</span>%):</span>
+                                <span style="color: #ffb700; font-weight: 600;">+Bs <span
+                                        id="editMateriaCalcIvaBs">0.00</span></span>
+                            </div>
+                            <div
+                                style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                                <span style="font-weight: 700;">Total VES:</span>
+                                <span style="font-weight: 800; color: var(--primary);">Bs <span
+                                        id="editMateriaCalcTotalBs">0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-actions">
+                    <button type="button" class="btn-cancel-product" id="cancelEditMateriaPrima">Cancelar</button>
+                    <button type="submit" class="btn-save-product" id="saveEditMateriaPrimaBtn">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================
+     MODAL CONSUMIR MATERIA PRIMA
+========================= -->
+
+    <div class="product-modal" id="consumirMateriaModal">
+        <div class="product-modal-content" style="max-width: 520px;">
+            <div class="product-header">
+                <h2><i class="fa-solid fa-fire-burner" style="color:var(--primary);"></i> Consumir / Descontar Stock
+                </h2>
+                <span class="close-product-modal" id="closeConsumirMateriaModal">&times;</span>
+            </div>
+
+            <div class="consumir-materia-info" id="consumirMateriaInfo">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="product-group" style="margin: 16px 0;">
+                <label>Cantidad a consumir</label>
+                <input type="number" id="consumirCantidad" min="1" placeholder="0"
+                    style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+            </div>
+
+            <div class="product-group" style="margin-bottom: 16px;">
+                <label>Motivo del consumo</label>
+                <select id="consumirMotivo"
+                    style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+                    <option value="personalizacion">Personalización de producto</option>
+                    <option value="venta_directa">Venta directa</option>
+                    <option value="merma">Merma / Pérdida</option>
+                    <option value="muestra">Muestra / Prueba</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+
+            <div class="product-group" style="margin-bottom: 20px;">
+                <label>Notas (opcional)</label>
+                <input type="text" id="consumirNotas" placeholder="Ej: Pedido #105, taza personalizada..."
+                    style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
+            </div>
+
+            <!-- Live preview -->
+            <div class="consumir-preview" id="consumirPreview" style="display:none;">
+                <div class="consumir-preview-row">
+                    <span>Stock actual:</span>
+                    <strong id="consumirPreviewStock">0</strong>
+                </div>
+                <div class="consumir-preview-row">
+                    <span>A descontar:</span>
+                    <strong id="consumirPreviewQty" style="color:#ff416c;">-0</strong>
+                </div>
+                <div class="consumir-preview-row"
+                    style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px;">
+                    <span>Stock restante:</span>
+                    <strong id="consumirPreviewRemaining" style="color:var(--primary);">0</strong>
+                </div>
+            </div>
+
+            <div class="product-actions">
+                <button type="button" class="btn-cancel-product" id="cancelConsumirMateria">Cancelar</button>
+                <button type="button" class="btn-save-product" id="confirmConsumirMateriaBtn"
+                    style="background: linear-gradient(135deg,#ff416c,#ff4b2b);">
+                    <i class="fa-solid fa-fire-burner"></i> Confirmar Consumo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================
+     MODAL AGREGAR CLIENTE
+========================= -->
+
+    <div id="clientModal" class="client-modal">
+
+        <div class="client-modal-content">
+
+            <!-- HEADER -->
+            <div class="client-header">
+
+                <h2>Agregar Cliente</h2>
+
+                <span class="close-client-modal" id="closeClientModal">
+                    &times;
+                </span>
+
+            </div>
+
+            <!-- FORM -->
+            <form id="clientForm">
+
+                <div class="client-group">
+
+                    <label>Nombre</label>
+
+                    <input type="text" id="clientName" required>
+
+                </div>
+
+                <div class="client-group">
+
+                    <label>Email</label>
+
+                    <input type="email" id="clientEmail" required>
+
+                </div>
+
+                <div class="client-group">
+
+                    <label>Teléfono</label>
+
+                    <input type="text" id="clientPhone">
+
+                </div>
+
+                <div class="client-group">
+
+                    <label>Dirección</label>
+
+                    <input type="text" id="clientAddress">
+
+                </div>
+
+                <!-- BOTONES -->
+                <div class="client-actions">
+
+                    <button type="button" class="btn-cancel-client" id="cancelClient">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="submit" class="btn-save-client">
+
+                        Guardar Cliente
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL EDITAR PRODUCTO -->
+
+    <div id="editProductModal" class="edit-modal">
+
+        <div class="edit-modal-content">
+
+            <h2>Editar Producto</h2>
+
+            <input type="hidden" id="editId">
 
             <div class="product-row">
                 <div class="product-group">
-                    <label>Nombre del Producto</label>
-                    <input type="text"
-                           id="productName"
-                           placeholder="Ej: Franela Negra"
-                           required>
+                    <label>Nombre</label>
+                    <input type="text" id="editNombre" placeholder="Nombre del producto">
                 </div>
 
                 <div class="product-group">
                     <label>Categoría</label>
-                    <select id="productCategory" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="">Seleccionar...</option>
+                    <select id="editCategoria"
+                        style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
                         <option value="Termos">Termos</option>
                         <option value="Mousepads">Mousepads</option>
                         <option value="Boligrafos">Bolígrafos</option>
@@ -1082,68 +1729,72 @@
             <div class="product-row-3col">
                 <div class="product-group">
                     <label>Precio en Dólares ($)</label>
-                    <input type="number"
-                           id="productPrice"
-                           placeholder="0.00"
-                           step="0.01"
-                           required>
+                    <input type="number" id="editPrecio" step="0.01">
                 </div>
 
                 <div class="product-group">
                     <label>Precio en Bolívares (Bs)</label>
-                    <input type="number"
-                           id="productPriceBs"
-                           placeholder="0.00"
-                           step="0.01">
+                    <input type="number" id="editPrecioBs" step="0.01">
                 </div>
 
                 <div class="product-group">
                     <label>Porcentaje de IVA (%)</label>
-                    <input type="number"
-                           id="productIva"
-                           placeholder="16"
-                           value="16"
-                           min="0"
-                           max="100"
-                           required>
+                    <input type="number" id="editIva" placeholder="16" min="0" max="100">
                 </div>
             </div>
 
-            <!-- Dynamic calculation display -->
-            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose de Precios (Con IVA)</span>
-                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
+            <!-- Dynamic calculation display for edit -->
+            <div class="iva-calculation-card"
+                style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <span
+                        style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose
+                        de Precios (Con IVA)</span>
+                    <span
+                        style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo
+                        en vivo</span>
                 </div>
                 <div style="display: flex; gap: 20px;">
                     <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
+                        <div
+                            style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                            Dólares (USD)</div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span>Base:</span>
-                            <span style="font-weight: 600;">$<span id="calcBaseUsd">0.00</span></span>
+                            <span style="font-weight: 600;">$<span id="editCalcBaseUsd">0.00</span></span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="calcIvaPctUsd">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+$<span id="calcIvaUsd">0.00</span></span>
+                            <span>IVA (<span id="editCalcIvaPctUsd">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+$<span
+                                    id="editCalcIvaUsd">0.00</span></span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
                             <span style="font-weight: 700;">Total USD:</span>
-                            <span style="font-weight: 800; color: var(--primary);">$<span id="calcTotalUsd">0.00</span></span>
+                            <span style="font-weight: 800; color: var(--primary);">$<span
+                                    id="editCalcTotalUsd">0.00</span></span>
                         </div>
                     </div>
-                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
+                    <div
+                        style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
+                        <div
+                            style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">
+                            Bolívares (VES)</div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span>Base:</span>
-                            <span style="font-weight: 600;">Bs <span id="calcBaseBs">0.00</span></span>
+                            <span style="font-weight: 600;">Bs <span id="editCalcBaseBs">0.00</span></span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="calcIvaPctBs">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="calcIvaBs">0.00</span></span>
+                            <span>IVA (<span id="editCalcIvaPctBs">16.00</span>%):</span>
+                            <span style="color: #ffb700; font-weight: 600;">+Bs <span
+                                    id="editCalcIvaBs">0.00</span></span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
                             <span style="font-weight: 700;">Total VES:</span>
-                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="calcTotalBs">0.00</span></span>
+                            <span style="font-weight: 800; color: var(--primary);">Bs <span
+                                    id="editCalcTotalBs">0.00</span></span>
                         </div>
                     </div>
                 </div>
@@ -1152,788 +1803,226 @@
             <div class="product-row">
                 <div class="product-group">
                     <label>Stock</label>
-                    <input type="number"
-                           id="productStock"
-                           placeholder="0"
-                           required>
+                    <input type="number" id="editStock">
                 </div>
 
                 <div class="product-group">
                     <label>Imagen del Producto</label>
-                    <label for="productImagen" class="file-upload-label">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;" id="editImagenActual">
+                    </div>
+                    <label for="editImagen" class="file-upload-label">
                         <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar archivo
                     </label>
-                    <input type="file"
-                           id="productImagen"
-                           accept="image/*"
-                           style="display: none;">
-                    <span id="productImagenName" class="file-name-display">Ningún archivo seleccionado</span>
+                    <input type="file" id="editImagen" accept="image/*" style="display: none;">
+                    <span id="editImagenName" class="file-name-display">Ningún archivo seleccionado</span>
                 </div>
             </div>
 
             <div class="product-group">
                 <label>Descripción</label>
-                <textarea id="productDescription"
-                          placeholder="Descripción del producto"></textarea>
+                <textarea id="editDescripcion" placeholder="Descripción del producto"></textarea>
             </div>
 
-            <!-- BOTONES -->
-            <div class="product-actions">
+            <div class="edit-actions">
 
-                <button type="button"
-                        class="btn-cancel-product"
-                        id="cancelProduct">
+                <button id="saveEditBtn" class="save-btn">
+
+                    Guardar
+
+                </button>
+
+                <button id="cancelEditBtn" class="cancel-btn">
 
                     Cancelar
 
                 </button>
 
-                <button type="submit"
-                        class="btn-save-product">
+            </div>
 
-                    Guardar Producto
+        </div>
+
+    </div>
+
+    <!-- MODAL FACTURA -->
+
+    <div id="invoiceModal" class="invoice-modal">
+
+        <div class="invoice-content">
+
+            <div id="invoiceContainer">
+
+                <div class="invoice-header">
+
+                    <div>
+                        <h1 class="brand">SUBLIME</h1>
+                        <p>Sistema de Ventas</p>
+                    </div>
+
+                    <div class="invoice-title">
+                        <h1>FACTURA</h1>
+                        <p id="invoiceNumber">INV-001</p>
+                    </div>
+
+                </div>
+
+                <div class="invoice-info">
+
+                    <div>
+                        <h3>Facturado a:</h3>
+                        <p id="invoiceClient">Cliente</p>
+                    </div>
+
+                    <div>
+                        <h3>Fecha:</h3>
+                        <p id="invoiceDate">01/01/2026</p>
+                    </div>
+
+                </div>
+
+                <table class="invoice-table">
+
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unit.</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="invoiceItems">
+                    </tbody>
+
+                </table>
+
+                <div class="invoice-sumanry">
+                    <p>
+                        Subtotal:
+                        <span id="invoiceSubtotal">$0.00</span>
+                    </p>
+                    <p>
+                        IVA:
+                        <span id="invoiceIVA">$0.00</span>
+                    </p>
+                    <h3>
+                        Total:
+                        <span id="invoiceTotal">$0.00</span>
+                    </h3>
+                </div>
+
+            </div>
+
+            <div class="invoice-actions">
+
+                <button id="downloadInvoiceBtn">
+
+                    Descargar
+
+                </button>
+
+                <button id="printInvoiceBtn">
+
+                    Imprimir
+
+                </button>
+
+                <button id="closeInvoiceBtn">
+
+                    Cerrar
 
                 </button>
 
             </div>
 
-        </form>
+        </div>
 
     </div>
 
-</div>
+    <div id="reportModal" class="client-modal">
 
-<!-- =========================
-     MODALS MATERIA PRIMA
-========================= -->
+        <div class="client-modal-content" style="max-width: 500px;">
 
-<!-- AGREGAR MATERIA PRIMA -->
-<div class="product-modal" id="materiaPrimaModal">
-    <div class="product-modal-content">
-        <div class="product-header">
-            <h2>Agregar Materia Prima</h2>
-            <span class="close-product-modal" id="closeMateriaPrimaModal">&times;</span>
-        </div>
+            <h2>Generar Reporte</h2>
 
-        <form id="materiaPrimaForm">
-            <div class="product-row">
-                <div class="product-group">
-                    <label>Fecha</label>
-                    <input type="date" id="materiaFecha" required>
-                </div>
-                <div class="product-group">
-                    <label>Categoría</label>
-                    <select id="materiaCategoria" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="">Seleccionar...</option>
-                        <option value="Camisas">Camisas</option>
-                        <option value="Tazas">Tazas</option>
-                        <option value="Gorras">Gorras</option>
-                        <option value="Mousepads">Mousepads</option>
-                        <option value="Llaveros">Llaveros</option>
-                        <option value="Otros">Otros</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Condicional para Camisas (Talla y Grupo de edad) -->
-            <div class="product-row" id="materiaCamisaExtra" style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
-                <div class="product-group">
-                    <label>Talla</label>
-                    <select id="materiaTalla" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                        <option value="XXL">XXL</option>
-                    </select>
-                </div>
-                <div class="product-group">
-                    <label>Grupo de Edad</label>
-                    <select id="materiaGrupoEdad" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="Niño/Niña">Niño/Niña</option>
-                        <option value="Adolescente">Adolescente</option>
-                        <option value="Adulto">Adulto</option>
-                        <option value="Mayor de edad">Mayor de edad</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="product-row-3col">
-                <div class="product-group">
-                    <label>Unidades</label>
-                    <input type="number" id="materiaUnidades" placeholder="0" min="1" required>
-                </div>
-                <div class="product-group">
-                    <label>Tasa de Cambio (Bs)</label>
-                    <input type="number" id="materiaTasa" placeholder="0.00" step="0.01" required>
-                </div>
-                <div class="product-group">
-                    <label>P. Unitario ($)</label>
-                    <input type="number" id="materiaPrecioUnitario" placeholder="0.00" step="0.01" required>
-                </div>
-            </div>
-
-            <div class="product-row">
-                <div class="product-group">
-                    <label>Porcentaje de IVA (%)</label>
-                    <input type="number" id="materiaIva" placeholder="16" value="16" min="0" max="100" required>
-                </div>
-                <div class="product-group">
-                    <label>Personalizado (Ref / Notas)</label>
-                    <input type="text" id="materiaPersonalizado" placeholder="Ej: Pedido Especial #102">
-                </div>
-            </div>
-
-            <!-- Desglose de Subtotal -->
-            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal de Compra (Con IVA)</span>
-                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                    <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Base:</span>
-                            <span style="font-weight: 600;">$<span id="materiaCalcBaseUsd">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="materiaCalcIvaPctUsd">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+$<span id="materiaCalcIvaUsd">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                            <span style="font-weight: 700;">Total USD:</span>
-                            <span style="font-weight: 800; color: var(--primary);">$<span id="materiaCalcTotalUsd">0.00</span></span>
-                        </div>
-                    </div>
-                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Base:</span>
-                            <span style="font-weight: 600;">Bs <span id="materiaCalcBaseBs">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="materiaCalcIvaPctBs">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="materiaCalcIvaBs">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                            <span style="font-weight: 700;">Total VES:</span>
-                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="materiaCalcTotalBs">0.00</span></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="product-actions">
-                <button type="button" class="btn-cancel-product" id="cancelMateriaPrima">Cancelar</button>
-                <button type="submit" class="btn-save-product">Guardar Materia Prima</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- EDITAR MATERIA PRIMA -->
-<div class="edit-modal" id="editMateriaPrimaModal">
-    <div class="edit-modal-content">
-        <div class="product-header">
-            <h2>Editar Materia Prima</h2>
-            <span class="close-product-modal" id="closeEditMateriaPrimaModal">&times;</span>
-        </div>
-
-        <form id="editMateriaPrimaForm">
-            <input type="hidden" id="editMateriaId">
-            <div class="product-row">
-                <div class="product-group">
-                    <label>Fecha</label>
-                    <input type="date" id="editMateriaFecha" required>
-                </div>
-                <div class="product-group">
-                    <label>Categoría</label>
-                    <select id="editMateriaCategoria" required style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="Camisas">Camisas</option>
-                        <option value="Tazas">Tazas</option>
-                        <option value="Gorras">Gorras</option>
-                        <option value="Mousepads">Mousepads</option>
-                        <option value="Llaveros">Llaveros</option>
-                        <option value="Otros">Otros</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Condicional para Camisas (Talla y Grupo de edad) -->
-            <div class="product-row" id="editMateriaCamisaExtra" style="display: none; background: rgba(0, 255, 128, 0.03); padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 15px;">
-                <div class="product-group">
-                    <label>Talla</label>
-                    <select id="editMateriaTalla" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                        <option value="XXL">XXL</option>
-                    </select>
-                </div>
-                <div class="product-group">
-                    <label>Grupo de Edad</label>
-                    <select id="editMateriaGrupoEdad" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                        <option value="Niño/Niña">Niño/Niña</option>
-                        <option value="Adolescente">Adolescente</option>
-                        <option value="Adulto">Adulto</option>
-                        <option value="Mayor de edad">Mayor de edad</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="product-row-3col">
-                <div class="product-group">
-                    <label>Unidades</label>
-                    <input type="number" id="editMateriaUnidades" placeholder="0" min="1" required>
-                </div>
-                <div class="product-group">
-                    <label>Tasa de Cambio (Bs)</label>
-                    <input type="number" id="editMateriaTasa" placeholder="0.00" step="0.01" required>
-                </div>
-                <div class="product-group">
-                    <label>P. Unitario ($)</label>
-                    <input type="number" id="editMateriaPrecioUnitario" placeholder="0.00" step="0.01" required>
-                </div>
-            </div>
-
-            <div class="product-row">
-                <div class="product-group">
-                    <label>Porcentaje de IVA (%)</label>
-                    <input type="number" id="editMateriaIva" placeholder="16" min="0" max="100" required>
-                </div>
-                <div class="product-group">
-                    <label>Personalizado (Ref / Notas)</label>
-                    <input type="text" id="editMateriaPersonalizado" placeholder="Ej: Pedido Especial #102">
-                </div>
-            </div>
-
-            <!-- Desglose de Subtotal -->
-            <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                    <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Subtotal de Compra (Con IVA)</span>
-                    <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
-                </div>
-                <div style="display: flex; gap: 20px;">
-                    <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Base:</span>
-                            <span style="font-weight: 600;">$<span id="editMateriaCalcBaseUsd">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="editMateriaCalcIvaPctUsd">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+$<span id="editMateriaCalcIvaUsd">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                            <span style="font-weight: 700;">Total USD:</span>
-                            <span style="font-weight: 800; color: var(--primary);">$<span id="editMateriaCalcTotalUsd">0.00</span></span>
-                        </div>
-                    </div>
-                    <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
-                        <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Base:</span>
-                            <span style="font-weight: 600;">Bs <span id="editMateriaCalcBaseBs">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>IVA (<span id="editMateriaCalcIvaPctBs">16.00</span>%):</span>
-                            <span style="color: #ffb700; font-weight: 600;">+Bs <span id="editMateriaCalcIvaBs">0.00</span></span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                            <span style="font-weight: 700;">Total VES:</span>
-                            <span style="font-weight: 800; color: var(--primary);">Bs <span id="editMateriaCalcTotalBs">0.00</span></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="product-actions">
-                <button type="button" class="btn-cancel-product" id="cancelEditMateriaPrima">Cancelar</button>
-                <button type="submit" class="btn-save-product" id="saveEditMateriaPrimaBtn">Guardar Cambios</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- =========================
-     MODAL CONSUMIR MATERIA PRIMA
-========================= -->
-
-<div class="product-modal" id="consumirMateriaModal">
-    <div class="product-modal-content" style="max-width: 520px;">
-        <div class="product-header">
-            <h2><i class="fa-solid fa-fire-burner" style="color:var(--primary);"></i> Consumir / Descontar Stock</h2>
-            <span class="close-product-modal" id="closeConsumirMateriaModal">&times;</span>
-        </div>
-
-        <div class="consumir-materia-info" id="consumirMateriaInfo">
-            <!-- Filled by JS -->
-        </div>
-
-        <div class="product-group" style="margin: 16px 0;">
-            <label>Cantidad a consumir</label>
-            <input type="number" id="consumirCantidad" min="1" placeholder="0" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-        </div>
-
-        <div class="product-group" style="margin-bottom: 16px;">
-            <label>Motivo del consumo</label>
-            <select id="consumirMotivo" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                <option value="personalizacion">Personalización de producto</option>
-                <option value="venta_directa">Venta directa</option>
-                <option value="merma">Merma / Pérdida</option>
-                <option value="muestra">Muestra / Prueba</option>
-                <option value="otro">Otro</option>
+            <label>Tipo de Reporte</label>
+            <select id="reportType"
+                style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
+                <option value="daily">Diario</option>
+                <option value="weekly">Semanal</option>
+                <option value="monthly">Mensual</option>
+                <option value="annual">Anual</option>
+                <option value="custom">Personalizado</option>
             </select>
+
+            <div id="reportDateRange" style="display:none;">
+                <label>Desde</label>
+                <input type="date" id="reportDateFrom"
+                    style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:10px;">
+                <label>Hasta</label>
+                <input type="date" id="reportDateTo"
+                    style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
+            </div>
+
+            <label>Formato de Exportación</label>
+            <select id="reportFormat"
+                style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:20px;">
+                <option value="pdf">PDF (vista para imprimir)</option>
+                <option value="excel">Excel (CSV)</option>
+            </select>
+
+            <div class="client-modal-actions">
+                <button id="generateReportAction">Generar</button>
+                <button id="cancelReportBtn">Cancelar</button>
+            </div>
+
         </div>
 
-        <div class="product-group" style="margin-bottom: 20px;">
-            <label>Notas (opcional)</label>
-            <input type="text" id="consumirNotas" placeholder="Ej: Pedido #105, taza personalizada..." style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-        </div>
-
-        <!-- Live preview -->
-        <div class="consumir-preview" id="consumirPreview" style="display:none;">
-            <div class="consumir-preview-row">
-                <span>Stock actual:</span>
-                <strong id="consumirPreviewStock">0</strong>
-            </div>
-            <div class="consumir-preview-row">
-                <span>A descontar:</span>
-                <strong id="consumirPreviewQty" style="color:#ff416c;">-0</strong>
-            </div>
-            <div class="consumir-preview-row" style="border-top:1px dashed var(--border);padding-top:8px;margin-top:4px;">
-                <span>Stock restante:</span>
-                <strong id="consumirPreviewRemaining" style="color:var(--primary);">0</strong>
-            </div>
-        </div>
-
-        <div class="product-actions">
-            <button type="button" class="btn-cancel-product" id="cancelConsumirMateria">Cancelar</button>
-            <button type="button" class="btn-save-product" id="confirmConsumirMateriaBtn" style="background: linear-gradient(135deg,#ff416c,#ff4b2b);">
-                <i class="fa-solid fa-fire-burner"></i> Confirmar Consumo
-            </button>
-        </div>
     </div>
-</div>
 
-<!-- =========================
-     MODAL AGREGAR CLIENTE
-========================= -->
+    <div id="editClientModal" class="client-modal">
 
-<div id="clientModal" class="client-modal">
+        <div class="client-modal-content">
 
-    <div class="client-modal-content">
+            <h2>Editar Cliente</h2>
 
-        <!-- HEADER -->
-        <div class="client-header">
+            <input type="hidden" id="editClientId">
 
-            <h2>Agregar Cliente</h2>
+            <label>Nombre</label>
+            <input type="text" id="editClientName">
 
-            <span class="close-client-modal" id="closeClientModal">
-                &times;
-            </span>
+            <label>Correo</label>
+            <input type="email" id="editClientEmail">
 
-        </div>
+            <label>Teléfono</label>
+            <input type="text" id="editClientPhone">
 
-        <!-- FORM -->
-        <form id="clientForm">
+            <label>Dirección</label>
+            <input type="text" id="editClientAddress">
 
-            <div class="client-group">
+            <div class="client-modal-actions">
 
-                <label>Nombre</label>
+                <button id="saveClientBtn">
 
-                <input type="text"
-                       id="clientName"
-                       required>
+                    Guardar
 
-            </div>
+                </button>
 
-            <div class="client-group">
-
-                <label>Email</label>
-
-                <input type="email"
-                       id="clientEmail"
-                       required>
-
-            </div>
-
-            <div class="client-group">
-
-                <label>Teléfono</label>
-
-                <input type="text"
-                       id="clientPhone">
-
-            </div>
-
-            <div class="client-group">
-
-                <label>Dirección</label>
-
-                <input type="text"
-                       id="clientAddress">
-
-            </div>
-
-            <!-- BOTONES -->
-            <div class="client-actions">
-
-                <button type="button"
-                        class="btn-cancel-client"
-                        id="cancelClient">
+                <button id="cancelClientBtn">
 
                     Cancelar
 
                 </button>
 
-                <button type="submit"
-                        class="btn-save-client">
-
-                    Guardar Cliente
-
-                </button>
-
             </div>
-
-        </form>
-
-    </div>
-
-</div>
-
-<!-- MODAL EDITAR PRODUCTO -->
-
-<div id="editProductModal" class="edit-modal">
-
-    <div class="edit-modal-content">
-
-        <h2>Editar Producto</h2>
-
-        <input type="hidden" id="editId">
-
-        <div class="product-row">
-            <div class="product-group">
-                <label>Nombre</label>
-                <input
-                    type="text"
-                    id="editNombre"
-                    placeholder="Nombre del producto">
-            </div>
-
-            <div class="product-group">
-                <label>Categoría</label>
-                <select id="editCategoria" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;outline:none;">
-                    <option value="Termos">Termos</option>
-                    <option value="Mousepads">Mousepads</option>
-                    <option value="Boligrafos">Bolígrafos</option>
-                    <option value="camisas">Camisas</option>
-                    <option value="tazas">Tazas</option>
-                    <option value="gorras">Gorras</option>
-                    <option value="llaveros">Llaveros</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="product-row-3col">
-            <div class="product-group">
-                <label>Precio en Dólares ($)</label>
-                <input
-                    type="number"
-                    id="editPrecio"
-                    step="0.01">
-            </div>
-
-            <div class="product-group">
-                <label>Precio en Bolívares (Bs)</label>
-                <input
-                    type="number"
-                    id="editPrecioBs"
-                    step="0.01">
-            </div>
-
-            <div class="product-group">
-                <label>Porcentaje de IVA (%)</label>
-                <input
-                    type="number"
-                    id="editIva"
-                    placeholder="16"
-                    min="0"
-                    max="100">
-            </div>
-        </div>
-
-        <!-- Dynamic calculation display for edit -->
-        <div class="iva-calculation-card" style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem; letter-spacing: 0.5px; text-transform: uppercase;">Desglose de Precios (Con IVA)</span>
-                <span style="font-size: 0.75rem; background: rgba(0, 255, 128, 0.1); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-weight: 600;">Cálculo en vivo</span>
-            </div>
-            <div style="display: flex; gap: 20px;">
-                <div style="flex: 1; font-size: 0.85rem; color: var(--text);">
-                    <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Dólares (USD)</div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Base:</span>
-                        <span style="font-weight: 600;">$<span id="editCalcBaseUsd">0.00</span></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>IVA (<span id="editCalcIvaPctUsd">16.00</span>%):</span>
-                        <span style="color: #ffb700; font-weight: 600;">+$<span id="editCalcIvaUsd">0.00</span></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                        <span style="font-weight: 700;">Total USD:</span>
-                        <span style="font-weight: 800; color: var(--primary);">$<span id="editCalcTotalUsd">0.00</span></span>
-                    </div>
-                </div>
-                <div style="flex: 1; font-size: 0.85rem; color: var(--text); border-left: 1px solid var(--border); padding-left: 20px;">
-                    <div style="color: var(--text-muted); font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; text-transform: uppercase;">Bolívares (VES)</div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>Base:</span>
-                        <span style="font-weight: 600;">Bs <span id="editCalcBaseBs">0.00</span></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>IVA (<span id="editCalcIvaPctBs">16.00</span>%):</span>
-                        <span style="color: #ffb700; font-weight: 600;">+Bs <span id="editCalcIvaBs">0.00</span></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; font-size: 0.95rem;">
-                        <span style="font-weight: 700;">Total VES:</span>
-                        <span style="font-weight: 800; color: var(--primary);">Bs <span id="editCalcTotalBs">0.00</span></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="product-row">
-            <div class="product-group">
-                <label>Stock</label>
-                <input
-                    type="number"
-                    id="editStock">
-            </div>
-
-            <div class="product-group">
-                <label>Imagen del Producto</label>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;" id="editImagenActual"></div>
-                <label for="editImagen" class="file-upload-label">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar archivo
-                </label>
-                <input
-                    type="file"
-                    id="editImagen"
-                    accept="image/*"
-                    style="display: none;">
-                <span id="editImagenName" class="file-name-display">Ningún archivo seleccionado</span>
-            </div>
-        </div>
-
-        <div class="product-group">
-            <label>Descripción</label>
-            <textarea
-                id="editDescripcion"
-                placeholder="Descripción del producto"></textarea>
-        </div>
-
-        <div class="edit-actions">
-
-            <button
-                id="saveEditBtn"
-                class="save-btn">
-
-                Guardar
-
-            </button>
-
-            <button
-                id="cancelEditBtn"
-                class="cancel-btn">
-
-                Cancelar
-
-            </button>
 
         </div>
 
     </div>
 
-</div>
+    <div id="toastContainer"></div>
 
-<!-- MODAL FACTURA -->
-
-<div id="invoiceModal" class="invoice-modal">
-
-    <div class="invoice-content">
-
-        <div id="invoiceContainer">
-
-            <div class="invoice-header">
-
-                <div>
-                    <h1 class="brand">SUBLIME</h1>
-                    <p>Sistema de Ventas</p>
-                </div>
-
-                <div class="invoice-title">
-                    <h1>FACTURA</h1>
-                    <p id="invoiceNumber">INV-001</p>
-                </div>
-
-            </div>
-
-            <div class="invoice-info">
-
-                <div>
-                    <h3>Facturado a:</h3>
-                    <p id="invoiceClient">Cliente</p>
-                </div>
-
-                <div>
-                    <h3>Fecha:</h3>
-                    <p id="invoiceDate">01/01/2026</p>
-                </div>
-
-            </div>
-
-            <table class="invoice-table">
-
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                        <th>Precio Unit.</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-
-                <tbody id="invoiceItems">
-                </tbody>
-
-            </table>
-
-            <div class="invoice-sumanry">
-                <p>
-                    Subtotal:
-                    <span id="invoiceSubtotal">$0.00</span>
-                </p>
-                <p>
-                    IVA:
-                    <span id="invoiceIVA">$0.00</span>
-                </p>
-                <h3>
-                    Total:
-                    <span id="invoiceTotal">$0.00</span>
-                </h3>
-            </div>
-
-        </div>
-
-        <div class="invoice-actions">
-
-            <button id="downloadInvoiceBtn">
-
-                Descargar
-
-            </button>
-
-            <button id="printInvoiceBtn">
-
-                Imprimir
-
-            </button>
-
-            <button id="closeInvoiceBtn">
-
-                Cerrar
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<div id="reportModal" class="client-modal">
-
-    <div class="client-modal-content" style="max-width: 500px;">
-
-        <h2>Generar Reporte</h2>
-
-        <label>Tipo de Reporte</label>
-        <select id="reportType" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
-            <option value="daily">Diario</option>
-            <option value="weekly">Semanal</option>
-            <option value="monthly">Mensual</option>
-            <option value="annual">Anual</option>
-            <option value="custom">Personalizado</option>
-        </select>
-
-        <div id="reportDateRange" style="display:none;">
-            <label>Desde</label>
-            <input type="date" id="reportDateFrom" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:10px;">
-            <label>Hasta</label>
-            <input type="date" id="reportDateTo" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:15px;">
-        </div>
-
-        <label>Formato de Exportación</label>
-        <select id="reportFormat" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-color);margin-bottom:20px;">
-            <option value="pdf">PDF (vista para imprimir)</option>
-            <option value="excel">Excel (CSV)</option>
-        </select>
-
-        <div class="client-modal-actions">
-            <button id="generateReportAction">Generar</button>
-            <button id="cancelReportBtn">Cancelar</button>
-        </div>
-
-    </div>
-
-</div>
-
-<div id="editClientModal" class="client-modal">
-
-    <div class="client-modal-content">
-
-        <h2>Editar Cliente</h2>
-
-        <input type="hidden" id="editClientId">
-
-        <label>Nombre</label>
-        <input type="text" id="editClientName">
-
-        <label>Correo</label>
-        <input type="email" id="editClientEmail">
-
-        <label>Teléfono</label>
-        <input type="text" id="editClientPhone">
-
-        <label>Dirección</label>
-        <input type="text" id="editClientAddress">
-
-        <div class="client-modal-actions">
-
-            <button id="saveClientBtn">
-
-                Guardar
-
-            </button>
-
-            <button id="cancelClientBtn">
-
-                Cancelar
-
-            </button>
-
-        </div>
-
-    </div>
-
-</div>
-
-<div id="toastContainer"></div>
-
-<script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 
 </body>
+
 </html>

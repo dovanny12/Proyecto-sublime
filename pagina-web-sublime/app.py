@@ -2,6 +2,7 @@ import os
 import time
 import json
 import uuid
+import re
 import sqlite3
 import urllib.request
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
@@ -307,15 +308,21 @@ def seed_default_admin():
         conn.execute('INSERT OR IGNORE INTO roles (id_rol, nombre) VALUES (?, ?)', (3, 'Administrador Web'))
         conn.commit()
 
-        panel_admin = conn.execute('SELECT id_usuario, id_rol FROM usuarios WHERE correo = ? LIMIT 1', ('admin@sublime.com',)).fetchone()
+        old_admin = conn.execute('SELECT id_usuario FROM usuarios WHERE correo = ? LIMIT 1', ('admin@sublime.com',)).fetchone()
+        if old_admin:
+            conn.execute('UPDATE usuarios SET correo = ?, contraseña = ?, id_rol = ? WHERE id_usuario = ?',
+                         ('adminsublime@gmail.com', generate_password_hash('watsonamelia12'), 1, old_admin['id_usuario']))
+            conn.commit()
+
+        panel_admin = conn.execute('SELECT id_usuario, id_rol FROM usuarios WHERE correo = ? LIMIT 1', ('adminsublime@gmail.com',)).fetchone()
         if not panel_admin:
             conn.execute(
                 'INSERT INTO usuarios (nombre, correo, contraseña, id_rol) VALUES (?, ?, ?, ?)',
-                ('Administrador Panel', 'admin@sublime.com', generate_password_hash('admin123'), 1)
+                ('Administrador Panel', 'adminsublime@gmail.com', generate_password_hash('watsonamelia12'), 1)
             )
             conn.commit()
-        elif panel_admin['id_rol'] != 1:
-            conn.execute('UPDATE usuarios SET id_rol = ? WHERE id_usuario = ?', (1, panel_admin['id_usuario']))
+        else:
+            conn.execute('UPDATE usuarios SET contraseña = ?, id_rol = ? WHERE id_usuario = ?', (generate_password_hash('watsonamelia12'), 1, panel_admin['id_usuario']))
             conn.commit()
 
         web_admin = conn.execute('SELECT id_usuario, id_rol FROM usuarios WHERE correo = ? LIMIT 1', ('admin_web@sublime.com',)).fetchone()
@@ -336,6 +343,20 @@ def seed_default_admin():
 
 CATEGORIES = ['camisas', 'tazas', 'gorras', 'llaveros', 'Termos', 'Mousepads', 'Boligrafos']
 
+PRODUCT_TYPE_TO_MATERIA = {
+    'franela': 'Camisas', 'taza': 'Tazas',
+    'pen': 'Otros', 'llavero': 'Llaveros',
+    'filtro': 'Otros', 'gorra': 'Gorras',
+    'mousepad': 'Mousepads'
+}
+
+ADMIN_CAT_TO_MATERIA = {
+    'camisas': 'Camisas', 'tazas': 'Tazas',
+    'gorras': 'Gorras', 'llaveros': 'Llaveros',
+    'Mousepads': 'Mousepads', 'Termos': 'Otros',
+    'Boligrafos': 'Otros'
+}
+
 
 def validate_stock(conn, product_id, quantity=1):
     if not product_id:
@@ -351,6 +372,77 @@ def validate_stock(conn, product_id, quantity=1):
         return False, f'"{name}" no tiene stock suficiente. Disponible: {stock}'
     return True, None
 
+
+def validate_materia_stock(conn, categoria, quantity=1, talla=None):
+    sql = 'SELECT IFNULL(SUM(IFNULL(stock_disponible, unidades)), 0) AS stock FROM materia_prima WHERE activo = 1 AND LOWER(categoria) = LOWER(?)'
+    params = [categoria]
+    if talla:
+        sql += ' AND LOWER(talla) = LOWER(?)'
+        params.append(talla)
+    row = conn.execute(sql, params).fetchone()
+    stock = float(row['stock']) if row and row['stock'] else 0
+    if stock < quantity:
+        return False, f'No hay suficiente material ({categoria}{" talla "+talla if talla else ""}) en stock. Disponible: {int(stock)}'
+    return True, None
+
+
+def get_min_materia_prima_price(categoria, talla=None):
+    conn = get_shared_db()
+    sql = 'SELECT MIN(precio_unitario) AS min_price FROM materia_prima WHERE activo = 1 AND LOWER(categoria) = LOWER(?)'
+    params = [categoria]
+    if talla:
+        sql += ' AND LOWER(talla) = LOWER(?)'
+        params.append(talla)
+    row = conn.execute(sql, params).fetchone()
+    conn.close()
+    return float(row['min_price']) if row and row['min_price'] is not None else None
+
+def _consumir_materia_prima(conn, categoria, cantidad, talla=None):
+    sql = 'SELECT id_materia, IFNULL(stock_disponible, unidades) AS stock FROM materia_prima WHERE activo = 1 AND LOWER(categoria) = LOWER(?)'
+    params = [categoria]
+    if talla:
+        sql += ' AND LOWER(talla) = LOWER(?)'
+        params.append(talla)
+    sql += ' ORDER BY stock DESC'
+    rows = conn.execute(sql, params).fetchall()
+    restante = cantidad
+    for row in rows:
+        if restante <= 0:
+            break
+        deducir = min(restante, row['stock'])
+        conn.execute('UPDATE materia_prima SET stock_disponible = IFNULL(stock_disponible, unidades) - ? WHERE id_materia = ?', (deducir, row['id_materia']))
+        restante -= deducir
+    return restante
+
+def consumir_materia_prima(categoria, cantidad, talla=None):
+    conn = get_shared_db()
+    restante = _consumir_materia_prima(conn, categoria, cantidad, talla)
+    conn.commit()
+    conn.close()
+    return restante
+
+def parse_custom_product_type(descripcion):
+    m = re.match(r'\((\w+)', descripcion or '')
+    return m.group(1).lower() if m else None
+
+def extract_custom_product_size(descripcion):
+    m = re.match(r'\(\w+,\s*(\w+)', descripcion or '')
+    return m.group(1) if m else None
+
+def deduct_materia_prima_for_cart_items(conn, cart_items):
+    for item in cart_items:
+        pid = item.get('id')
+        qty = int(item.get('quantity', 1))
+        if not pid:
+            continue
+        prod = conn.execute('SELECT nombre, descripcion FROM productos WHERE id_producto = ? LIMIT 1', (pid,)).fetchone()
+        if prod and 'Personalizado' in (prod['nombre'] or ''):
+            tipo = parse_custom_product_type(prod['descripcion'])
+            if tipo:
+                cat = PRODUCT_TYPE_TO_MATERIA.get(tipo)
+                if cat:
+                    t = extract_custom_product_size(prod['descripcion']) if tipo == 'franela' else None
+                    _consumir_materia_prima(conn, cat, qty, t)
 
 def placeholder():
     return '?'
@@ -379,7 +471,7 @@ def fetch_products(categoria=None, search_query=None, sort_option='newest', limi
         'COALESCE((SELECT ruta_imagen FROM imagenes_productos ip WHERE ip.id_producto = p.id_producto ORDER BY ip.id_imagen LIMIT 1), ?) AS ruta_imagen '
         'FROM productos p '
         'LEFT JOIN categorias c ON p.id_categoria = c.id_categoria '
-        'WHERE p.activo = 1 AND p.id_categoria IS NOT NULL '
+        "WHERE p.activo = 1 AND p.id_categoria IS NOT NULL AND IFNULL(p.automatico, 0) = 0 "
     )
     params = ['placeholder.png']
 
@@ -419,7 +511,7 @@ def fetch_product_by_id(product_id):
         'FROM productos p '
         'LEFT JOIN categorias c ON p.id_categoria = c.id_categoria '
         'LEFT JOIN inventario i ON i.id_producto = p.id_producto '
-        'WHERE p.activo = 1 AND p.id_producto = ? ',
+        "WHERE p.activo = 1 AND IFNULL(p.automatico, 0) = 0 AND p.id_producto = ? ",
         ['placeholder.png', product_id]
     ).fetchone()
     conn.close()
@@ -476,7 +568,7 @@ def get_or_create_cart(conn, cliente_id):
     return cursor.lastrowid
 
 
-def get_or_create_custom_product(conn, name='Producto Personalizado', description='Producto personalizado', price=30.0):
+def get_or_create_custom_product(conn, name='Producto Personalizado', description='Producto personalizado', price=30.0, automatico=1):
     import time
     unique_name = f"{name} - {int(time.time()*1000)}"
     cat = conn.execute('SELECT id_categoria FROM categorias WHERE nombre = ? LIMIT 1', ('Personalizado',)).fetchone()
@@ -486,8 +578,8 @@ def get_or_create_custom_product(conn, name='Producto Personalizado', descriptio
         cur = conn.execute('INSERT INTO categorias (nombre) VALUES (?)', ('Personalizado',))
         cat_id = cur.lastrowid
     cursor = conn.execute(
-        'INSERT INTO productos (nombre, descripcion, costo, precio_venta, id_categoria, activo) VALUES (?, ?, ?, ?, ?, 1)',
-        (unique_name, description, price, price, cat_id)
+        'INSERT INTO productos (nombre, descripcion, costo, precio_venta, id_categoria, activo, automatico) VALUES (?, ?, ?, ?, ?, 1, ?)',
+        (unique_name, description, price, price, cat_id, automatico)
     )
     conn.commit()
     return cursor.lastrowid
@@ -759,7 +851,7 @@ def api_product(product_id):
         'FROM productos p '
         'LEFT JOIN categorias c ON p.id_categoria = c.id_categoria '
         'LEFT JOIN inventario i ON i.id_producto = p.id_producto '
-        'WHERE p.id_producto = ?',
+        "WHERE p.activo = 1 AND IFNULL(p.automatico, 0) = 0 AND p.id_producto = ?",
         (product_id,)
     ).fetchone()
     conn.close()
@@ -842,9 +934,11 @@ def api_order_detail(order_id):
         return jsonify({'mensaje': 'Pedido no encontrado.'}), 404
 
     items = conn.execute(
-        'SELECT dp.id_detalle AS id, dp.id_producto AS product_id, pr.nombre AS name, dp.cantidad AS quantity, dp.precio_unitario AS price '
+        'SELECT dp.id_detalle AS id, dp.id_producto AS product_id, pr.nombre AS name, '
+        'dp.cantidad AS quantity, dp.precio_unitario AS price, ip.ruta_imagen AS image_url '
         'FROM detalle_pedidos dp '
         'LEFT JOIN productos pr ON dp.id_producto = pr.id_producto '
+        'LEFT JOIN imagenes_productos ip ON ip.id_producto = pr.id_producto '
         'WHERE dp.id_pedido = ?',
         (order_id,)
     ).fetchall()
@@ -857,7 +951,8 @@ def api_order_detail(order_id):
             'name': item['name'] or 'Producto personalizado',
             'quantity': item['quantity'],
             'price': float(item['price'] or 0),
-            'total': float((item['price'] or 0) * (item['quantity'] or 1))
+            'total': float((item['price'] or 0) * (item['quantity'] or 1)),
+            'image_url': item['image_url'] or 'placeholder.png'
         }
         for item in items
     ]
@@ -918,6 +1013,21 @@ def api_get_cart():
         cart = load_cart_from_db()
     else:
         cart = session.get('cart', [])
+
+    # Enrich with image_url
+    conn = get_shared_db()
+    for item in cart:
+        if item.get('id'):
+            row = conn.execute(
+                'SELECT ip.ruta_imagen FROM productos p '
+                'LEFT JOIN imagenes_productos ip ON ip.id_producto = p.id_producto '
+                'WHERE p.id_producto = ? LIMIT 1',
+                (item['id'],)
+            ).fetchone()
+            item['image_url'] = row['ruta_imagen'] if row and row['ruta_imagen'] else 'placeholder.png'
+        else:
+            item['image_url'] = 'placeholder.png'
+    conn.close()
 
     total = calculate_cart_total(cart)
     return jsonify({'cart': cart, 'total': total})
@@ -1042,10 +1152,13 @@ def api_checkout():
     conn = get_shared_db()
     ensure_order_statuses(conn)
 
-    # Validar stock antes de continuar
+    # Validar stock antes de continuar (excepto personalizados)
     for item in cart_items:
         product_id = item.get('id')
         if product_id and product_id != 0:
+            name_row = conn.execute('SELECT nombre FROM productos WHERE id_producto = ? LIMIT 1', (product_id,)).fetchone()
+            if name_row and name_row['nombre'] and name_row['nombre'].startswith('Personalizado'):
+                continue
             cantidad = max(1, int(item.get('quantity', 1)))
             valid, msg = validate_stock(conn, product_id, cantidad)
             if not valid:
@@ -1121,8 +1234,12 @@ def api_checkout():
         (venta_id, subtotal, effective_iva, impuesto, total_con_iva)
     )
 
+    deduct_materia_prima_for_cart_items(conn, cart_items)
+
     conn.commit()
     conn.close()
+
+    send_order_status_email(pedido_id, 'Pendiente de Verificaci\u00f3n')
 
     if 'user_id' in session:
         save_cart_to_db([])
@@ -1189,6 +1306,9 @@ def admin_create_invoice():
     for item in items:
         pid = item.get('id')
         if pid:
+            name_row = conn.execute('SELECT nombre FROM productos WHERE id_producto = ? LIMIT 1', (pid,)).fetchone()
+            if name_row and name_row['nombre'] and name_row['nombre'].startswith('Personalizado'):
+                continue
             qty = int(item.get('quantity', 1))
             valid, msg = validate_stock(conn, pid, qty)
             if not valid:
@@ -1308,14 +1428,42 @@ def api_dashboard():
 def api_inventory():
     conn = get_shared_db()
     inventory = conn.execute(
-        'SELECT p.id_producto, p.nombre, p.precio_venta AS precio, IFNULL(i.stock_actual, 0) AS stock, c.nombre AS categoria '
+        'SELECT p.id_producto, p.nombre, p.precio_venta AS precio, IFNULL(i.stock_actual, 0) AS stock, c.nombre AS categoria, '
+        'COALESCE((SELECT ip.ruta_imagen FROM imagenes_productos ip WHERE ip.id_producto = p.id_producto ORDER BY ip.id_imagen LIMIT 1), \'\') AS imagen '
         'FROM productos p '
         'LEFT JOIN categorias c ON p.id_categoria = c.id_categoria '
         'LEFT JOIN inventario i ON i.id_producto = p.id_producto '
-        'WHERE p.activo = 1 ORDER BY p.nombre ASC'
+        'WHERE p.activo = 1 AND IFNULL(p.automatico, 0) = 0 ORDER BY p.nombre ASC'
     ).fetchall()
     conn.close()
     return jsonify({'inventory': [dict(row) for row in inventory]})
+
+@app.route('/api/inventory/<int:product_id>/stock', methods=['PATCH'])
+@admin_required
+def api_update_stock(product_id):
+    data = request.get_json(silent=True) or {}
+    stock = data.get('stock')
+    if stock is None or not isinstance(stock, int) or stock < 0:
+        return jsonify({'message': 'Stock inválido. Debe ser un número entero >= 0.'}), 400
+
+    conn = get_shared_db()
+    existing = conn.execute('SELECT id_inventario FROM inventario WHERE id_producto = ?', (product_id,)).fetchone()
+    if existing:
+        conn.execute('UPDATE inventario SET stock_actual = ? WHERE id_producto = ?', (stock, product_id))
+    else:
+        conn.execute('INSERT INTO inventario (id_producto, stock_actual) VALUES (?, ?)', (product_id, stock))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Stock actualizado correctamente.', 'stock': stock})
+
+@app.route('/api/materia-prima/price')
+def api_materia_prima_price():
+    categoria = request.args.get('categoria', '').strip()
+    talla = request.args.get('talla', '').strip() or None
+    if not categoria:
+        return jsonify({'price': None, 'error': 'Categoria requerida'}), 400
+    price = get_min_materia_prima_price(categoria, talla)
+    return jsonify({'price': price, 'categoria': categoria, 'talla': talla or None})
 
 @app.route('/api/materia-prima', methods=['GET'])
 @admin_required
@@ -1436,6 +1584,29 @@ def api_delete_materia_prima(id_materia):
         return jsonify({'message': str(e)}), 500
     finally:
         conn.close()
+
+@app.route('/api/materia-prima/<int:id_materia>/stock', methods=['PATCH'])
+@admin_required
+def api_update_materia_stock(id_materia):
+    raw = request.get_json(silent=True)
+    data = raw if isinstance(raw, dict) else {}
+    stock = data.get('stock')
+    if stock is None or not isinstance(stock, int) or stock < 0:
+        return jsonify({'message': 'Stock inválido. Debe ser un número entero >= 0.'}), 400
+
+    conn = get_shared_db()
+    row = conn.execute('SELECT id_materia, unidades FROM materia_prima WHERE id_materia = ? AND activo = 1', (id_materia,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'message': 'Materia prima no encontrada.'}), 404
+    if stock > row['unidades']:
+        conn.close()
+        return jsonify({'message': f'El stock no puede superar las unidades originales ({row["unidades"]}).'}), 400
+
+    conn.execute('UPDATE materia_prima SET stock_disponible = ? WHERE id_materia = ?', (stock, id_materia))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Stock actualizado correctamente.', 'stock': stock})
 
 @app.route('/api/materia-prima/<int:id_materia>/consumir', methods=['POST'])
 @admin_required
@@ -1590,7 +1761,7 @@ def api_sales_data():
         'FROM productos p '
         'LEFT JOIN inventario i ON i.id_producto = p.id_producto '
         'LEFT JOIN categorias c ON c.id_categoria = p.id_categoria '
-        'WHERE p.activo = 1 ORDER BY c.nombre ASC, p.nombre ASC LIMIT 100'
+        'WHERE p.activo = 1 AND IFNULL(p.automatico, 0) = 0 ORDER BY c.nombre ASC, p.nombre ASC LIMIT 100'
     ).fetchall()
     clients = conn.execute(
         "SELECT id_cliente, nombre FROM clientes WHERE activo = 1 AND origen = 'manual' ORDER BY nombre ASC LIMIT 100"
@@ -1613,6 +1784,13 @@ def api_create_product():
         return jsonify({'message': 'Nombre, categoría y precio son requeridos.'}), 400
 
     conn = get_shared_db()
+
+    mat_cat = ADMIN_CAT_TO_MATERIA.get(categoria)
+    if mat_cat:
+        min_price = get_min_materia_prima_price(mat_cat)
+        if min_price and min_price > 0:
+            precio = min_price
+
     category_row = conn.execute('SELECT id_categoria FROM categorias WHERE nombre = ? LIMIT 1', (categoria,)).fetchone()
     if category_row:
         category_id = category_row['id_categoria']
@@ -1626,6 +1804,9 @@ def api_create_product():
     )
     product_id = product_cursor.lastrowid
     conn.execute('INSERT INTO inventario (id_producto, stock_actual) VALUES (?, ?)', (product_id, stock))
+
+    if mat_cat and stock > 0:
+        _consumir_materia_prima(conn, mat_cat, stock)
 
     imagen = request.files.get('imagen')
     if imagen and imagen.filename:
@@ -1641,7 +1822,7 @@ def api_create_product():
 
     conn.commit()
     conn.close()
-    return jsonify({'message': 'Producto creado correctamente.', 'id_producto': product_id}), 201
+    return jsonify({'message': 'Producto creado correctamente.', 'id_producto': product_id, 'precio_auto': precio}), 201
 
 @app.route('/api/product/<int:product_id>', methods=['PUT'])
 @admin_required
@@ -1806,6 +1987,8 @@ def api_update_order_status(order_id):
                      (tracking, data.get('empresa_envio', ''), 'Enviado', order_id))
     conn.commit()
     conn.close()
+
+    send_order_status_email(order_id, nuevo_estado)
     return jsonify({'message': f'Estado actualizado a {nuevo_estado}.'})
 
 @app.route('/api/admin/orders/delete', methods=['POST'])
@@ -1862,6 +2045,8 @@ def api_verify_order_payment(order_id):
 
     conn.commit()
     conn.close()
+
+    send_order_status_email(order_id, 'Procesando')
     return jsonify({'message': 'Pago verificado, stock descontado y pedido en procesamiento.'})
 
 @app.route('/api/order/<int:order_id>/items', methods=['GET'])
@@ -1993,6 +2178,17 @@ if old_cats:
         conn.execute('UPDATE productos SET id_categoria = ? WHERE id_categoria = ?', (default_id, old['id_categoria']))
         conn.execute('DELETE FROM categorias WHERE id_categoria = ?', (old['id_categoria'],))
 
+# Migrar: agregar columna automatico a productos
+try:
+    # Verificar si la columna ya existe
+    cols = [row['name'] for row in conn.execute('PRAGMA table_info(productos)').fetchall()]
+    if 'automatico' not in cols:
+        conn.execute('ALTER TABLE productos ADD COLUMN automatico INTEGER DEFAULT 0')
+        conn.execute("UPDATE productos SET automatico = 1 WHERE nombre LIKE 'Personalizado - % - %'")
+        conn.commit()
+except Exception as e:
+    app.logger.error(f'Error migrando columna automatico: {e}')
+
 if total == 0:
     taza_cat = conn.execute('SELECT id_categoria FROM categorias WHERE nombre = ? LIMIT 1', ('tazas',)).fetchone()
     cat_id = taza_cat['id_categoria']
@@ -2120,6 +2316,85 @@ Si no solicitaste este cambio, ignora este mensaje.
         app.logger.error(f'Error enviando email a {to_email}: {e}')
         return False
 
+STATUS_MESSAGES = {
+    'Pendiente de Verificaci\u00f3n': (
+        'Hemos recibido tu pedido y está pendiente de verificación de pago.',
+        'Pendiente de Verificación'
+    ),
+    'Procesando': (
+        '¡Tu pago ha sido verificado! Tu pedido está siendo procesado. Pronto lo tendremos listo para envío.',
+        'Procesando'
+    ),
+    'Enviado': (
+        '¡Tu pedido ha sido enviado! Pronto recibirás más información sobre el seguimiento.',
+        'Enviado'
+    ),
+    'Entregado': (
+        '¡Tu pedido ha sido entregado! Esperamos que lo disfrutes. Gracias por confiar en Sublime\'s.',
+        'Entregado'
+    ),
+    'Cancelado': (
+        'Tu pedido ha sido cancelado. Si tienes dudas, contáctanos.',
+        'Cancelado'
+    ),
+}
+
+def send_order_status_email(order_id, nuevo_estado):
+    if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
+        return False
+    conn = get_shared_db()
+    row = conn.execute(
+        '''SELECT c.correo, c.nombre, p.id_pedido, p.total
+           FROM pedidos p
+           JOIN clientes c ON p.id_cliente = c.id_cliente
+           WHERE p.id_pedido = ? LIMIT 1''',
+        (order_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return False
+
+    cliente_email = row['correo']
+    cliente_nombre = row['nombre']
+    total = row['total']
+
+    msg_info = STATUS_MESSAGES.get(nuevo_estado)
+    if msg_info:
+        body_text, estado_label = msg_info
+    else:
+        body_text = f'El estado de tu pedido ha cambiado a: {nuevo_estado}.'
+        estado_label = nuevo_estado
+
+    msg = MIMEText(f'''Hola {cliente_nombre},
+
+{body_text}
+
+Detalles del pedido:
+- Número de pedido: #{order_id}
+- Estado: {estado_label}
+- Total: ${total:.2f} USD
+
+Si tienes alguna pregunta, no dudes en contactarnos.
+
+— Sublime's''')
+    msg['Subject'] = f'Actualización de tu pedido #{order_id} - Sublime\'s'
+    msg['From'] = MAIL_FROM
+    msg['To'] = cliente_email
+    try:
+        if SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+        return True
+    except Exception as e:
+        app.logger.error(f'Error enviando email de estado a {cliente_email}: {e}')
+        return False
+
 @app.route('/api/forgot', methods=['POST'])
 def api_forgot():
     data = request.get_json() or {}
@@ -2234,7 +2509,6 @@ def producto(id):
 @app.route('/personalizar', methods=['GET', 'POST'])
 def personalizar():
     if request.method == 'POST':
-        # Capturar todos los detalles de personalización
         product_type = request.form.get('product_type')
         size = request.form.get('size')
         color = request.form.get('product_color')
@@ -2242,14 +2516,25 @@ def personalizar():
         text = request.form.get('custom_text')
         font = request.form.get('font_style')
         placement = request.form.get('placement')
-        
+
+        categoria = PRODUCT_TYPE_TO_MATERIA.get(product_type.lower())
+        talla = size if product_type.lower() == 'franela' else None
+        app.logger.debug(f'personalizar: type={product_type} categoria={categoria} talla={talla}')
+        min_price = None
+        if categoria:
+            min_price = get_min_materia_prima_price(categoria, talla)
+            app.logger.debug(f'personalizar: materia prima price={min_price}')
+        if not min_price:
+            fallback = {'franela': 20.00, 'taza': 12.00, 'pen': 8.00, 'llavero': 5.00, 'filtro': 25.00, 'gorra': 15.00, 'mousepad': 10.00}
+            min_price = fallback.get(product_type.lower(), 30.00)
+            app.logger.debug(f'personalizar: using fallback price={min_price}')
+
         custom_details = f"({product_type.capitalize()}, {size}, {color}, {material})"
         if text:
             custom_details += f" con texto: '{text}' ({font}) en {placement}"
             
-        # Crear producto personalizado en DB con nombre identificable
         conn = get_shared_db()
-        product_id = get_or_create_custom_product(conn, name=f"Personalizado - {product_type.capitalize()}", description=custom_details, price=30.0)
+        product_id = get_or_create_custom_product(conn, name=f"Personalizado - {product_type.capitalize()}", description=custom_details, price=min_price)
         conn.close()
         
         flash('Diseño personalizado añadido al carrito.', 'success')
@@ -2261,9 +2546,34 @@ def personalizar():
             'id': product_id,
             'name': f'Personalizado: {product_type.capitalize()}', 
             'details': custom_details,
-            'price': 30.00,
-            'quantity': 1
+            'price': min_price,
+            'quantity': 1,
+            'product_type': product_type.lower(),
+            'size': size
         })
+        
+        # ── Save custom design image ──
+        design_image = request.form.get('design_image', '')
+        if design_image and design_image.startswith('data:image'):
+            import base64, re, os
+            header, encoded = design_image.split(',', 1)
+            ext = 'png'
+            m = re.search(r'image/(\w+)', header)
+            if m: ext = m.group(1)
+            if ext == 'jpeg': ext = 'jpg'
+            filename = f"custom_{product_id}_{int(time.time()*1000)}.{ext}"
+            dirpath = os.path.join(app.root_path, 'static', 'images', 'custom')
+            os.makedirs(dirpath, exist_ok=True)
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, 'wb') as f:
+                f.write(base64.b64decode(encoded))
+            conn = get_shared_db()
+            conn.execute(
+                'INSERT INTO imagenes_productos (id_producto, ruta_imagen) VALUES (?, ?)',
+                (product_id, f'custom/{filename}')
+            )
+            conn.commit()
+            conn.close()
         
         if 'user_id' in session:
             save_cart_to_db(cart)
@@ -2429,10 +2739,27 @@ def checkout():
         conn = get_shared_db()
         ensure_order_statuses(conn)
 
-        # Validar stock antes de continuar
+        # Validar stock (productos normales → inventario; personalizados → materia_prima)
         for item in cart:
             product_id = item.get('id')
             if product_id:
+                ptype = item.get('product_type')
+                if not ptype:
+                    name = item.get('name', '')
+                    for key, cat in PRODUCT_TYPE_TO_MATERIA.items():
+                        if key.capitalize() in name:
+                            ptype = key
+                            break
+                if ptype:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get(ptype)
+                    if mat_cat:
+                        talla = item.get('size') if ptype == 'franela' else None
+                        valid, msg = validate_materia_stock(conn, mat_cat, item.get('quantity', 1), talla)
+                        if not valid:
+                            conn.close()
+                            flash(msg, 'error')
+                            return redirect(url_for('carrito'))
+                        continue
                 valid, msg = validate_stock(conn, product_id, item.get('quantity', 1))
                 if not valid:
                     conn.close()
@@ -2506,8 +2833,12 @@ def checkout():
             (venta_id, subtotal, effective_iva, impuesto, total_con_iva)
         )
 
+        deduct_materia_prima_for_cart_items(conn, cart)
+
         conn.commit()
         conn.close()
+
+        send_order_status_email(pedido_id, 'Pendiente de Verificaci\u00f3n')
 
         # Limpiar carrito y checkout
         if 'checkout_items' in session:
@@ -2632,7 +2963,7 @@ def login():
             guest_cart = session.get('cart', [])
             merge_guest_cart_into_db(guest_cart)
 
-            if user['correo'].lower() == 'admin@sublime.com':
+            if user['correo'].lower() == 'adminsublime@gmail.com' or user['rol'] in ('Administrador Panel', 'Administrador'):
                 flash(f'¡Bienvenido al panel administrativo, {user["nombre"]}!', 'success')
                 return redirect(url_for('admin_panel_index'))
 

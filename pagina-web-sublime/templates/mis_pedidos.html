@@ -173,8 +173,8 @@
 
 .order-item-card {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 18px;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
     background: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 22px;
@@ -328,7 +328,10 @@ async function showOrderDetail(orderId) {
             <div class="order-items-grid">
                 ${items.map(item => `
                     <div class="order-item-card">
-                        <div>
+                        <img src="${item.image_url ? '/static/images/' + item.image_url : '/static/images/placeholder.png'}" 
+                             alt="${item.name}" 
+                             style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;">
+                        <div style="flex:1;min-width:0;">
                             <strong>${item.name}</strong>
                             <p>Cantidad: ${item.quantity}</p>
                             <p>Precio unitario: ${formatCurrency(item.price)}</p>

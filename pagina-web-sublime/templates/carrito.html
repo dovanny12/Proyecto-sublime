@@ -22,25 +22,36 @@
 
             <div class="cart-items-list" id="cartItemsList">
                 {% for item in cart %}
-                <div class="cart-item-card" data-index="{{ loop.index0 }}" data-iva="{{ item.iva if item.iva is not none else 16.0 }}">
+                {% set is_custom = item.name and item.name.startswith('Personalizado') %}
+                <div class="cart-item-card {{ 'cart-item-custom' if is_custom }}" data-index="{{ loop.index0 }}" data-iva="{{ item.iva if item.iva is not none else 16.0 }}">
                     <label class="cart-checkbox-label">
                         <input type="checkbox" class="item-checkbox" checked>
                         <span class="cart-checkbox-custom"></span>
                     </label>
                     
-                    <div class="cart-item-image">
+                    <div class="cart-item-image {{ 'cart-item-image-custom' if is_custom }}">
+                        {% if is_custom and item.image_url and item.image_url != 'placeholder.png' %}
+                        <img src="{{ url_for('static', filename='images/' + item.image_url) }}" alt="{{ item.name }}" class="custom-product-img">
+                        {% else %}
                         <img src="{{ url_for('static', filename='images/' + (item.image_url or 'placeholder.png')) }}" alt="{{ item.name }}">
+                        {% endif %}
+                        {% if is_custom %}
+                        <span class="custom-badge">Diseño propio</span>
+                        {% endif %}
                     </div>
                     
                     <div class="cart-item-details">
                         <h3 class="cart-item-name">{{ item.name }}</h3>
+                        {% if is_custom and item.details %}
+                        <p class="cart-item-desc custom-desc">{{ item.details }}</p>
+                        {% endif %}
                         {% if item.size %}
                         <p class="cart-item-attr">Talla: <strong>{{ item.size }}</strong></p>
                         {% endif %}
                         {% if item.quantity and item.quantity > 1 %}
                         <p class="cart-item-attr">Cantidad: {{ item.quantity }}</p>
                         {% endif %}
-                        {% if item.details and item.details != item.name %}
+                        {% if not is_custom and item.details and item.details != item.name %}
                         <p class="cart-item-desc">{{ item.details }}</p>
                         {% endif %}
                     </div>
