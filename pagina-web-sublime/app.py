@@ -2280,7 +2280,7 @@ SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 MAIL_FROM = os.environ.get('MAIL_FROM', '') or SMTP_USER
-SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', '0') == '1'
+SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', '0') == '1' or SMTP_PORT == 465
 
 def send_reset_email(to_email, token):
     if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
