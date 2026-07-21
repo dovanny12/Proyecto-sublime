@@ -3546,22 +3546,16 @@ body.light-mode .invoice-content {
 
 /* ── Orders Section ── */
 #orders {
-    overflow-x: visible;
-    overflow-y: visible;
-    height: auto;
-    min-height: auto;
-    margin-bottom: 20px;
+    overflow-x: auto;
 }
 
 /* ── Orders List ── */
 .orders-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    overflow: visible;
-    padding-bottom: 0;
-    padding: 0 5%;
-    align-self: stretch;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 4px;
 }
 
 /* Subtle scrollbar for the orders list */
@@ -3620,10 +3614,8 @@ body.light-mode .invoice-content {
     box-shadow: 0 1px 6px var(--shadow);
     transition: box-shadow 0.25s, border-color 0.25s;
     border-left: 4px solid;
-    min-width: 100%;
-    max-width: 100%;
-    margin: 0;
-    margin-bottom: 8px;
+    min-width: 900px;
+    margin-bottom: 4px;
     flex-shrink: 0;
 }
 
