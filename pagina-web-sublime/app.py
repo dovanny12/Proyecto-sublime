@@ -2333,10 +2333,11 @@ class IPv4SMTP_SSL(smtplib.SMTP_SSL):
 def _send_via_http_api(to_email, subject, html_body, plain_body):
     from_email = MAIL_FROM or SMTP_USER or 'onboarding@resend.dev'
     if RESEND_API_KEY:
+        resend_from = MAIL_FROM if (MAIL_FROM and 'onboarding@resend.dev' in MAIL_FROM) else 'Sublime\'s <onboarding@resend.dev>'
         try:
             url = 'https://api.resend.com/emails'
             payload = json.dumps({
-                'from': from_email,
+                'from': resend_from,
                 'to': [to_email],
                 'subject': subject,
                 'html': html_body,
@@ -2351,7 +2352,25 @@ def _send_via_http_api(to_email, subject, html_body, plain_body):
                     app.logger.info(f'[EMAIL VIA RESEND API OK] Enviado a {to_email}')
                     return True
         except Exception as e:
-            app.logger.error(f'Error enviando vía Resend API: {e}')
+            app.logger.warning(f'Intento Resend con {resend_from} falló ({e}). Probando con onboarding@resend.dev...')
+            try:
+                payload = json.dumps({
+                    'from': 'Sublime\'s <onboarding@resend.dev>',
+                    'to': [to_email],
+                    'subject': subject,
+                    'html': html_body,
+                    'text': plain_body
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=payload, headers={
+                    'Authorization': f'Bearer {RESEND_API_KEY}',
+                    'Content-Type': 'application/json'
+                }, method='POST')
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status in (200, 201):
+                        app.logger.info(f'[EMAIL VIA RESEND API OK] Enviado a {to_email}')
+                        return True
+            except Exception as ex:
+                app.logger.error(f'Error enviando vía Resend API: {ex}')
 
     if BREVO_API_KEY:
         try:
