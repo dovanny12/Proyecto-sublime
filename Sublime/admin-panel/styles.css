@@ -3553,7 +3553,7 @@ body.light-mode .invoice-content {
 .orders-list {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     overflow-x: auto;
     padding-bottom: 4px;
 }
@@ -3615,6 +3615,8 @@ body.light-mode .invoice-content {
     transition: box-shadow 0.25s, border-color 0.25s;
     border-left: 4px solid;
     min-width: 900px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
 }
 
 .order-card-modern:hover {
