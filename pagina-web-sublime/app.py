@@ -2333,7 +2333,10 @@ class IPv4SMTP_SSL(smtplib.SMTP_SSL):
 def _send_via_http_api(to_email, subject, html_body, plain_body):
     from_email = MAIL_FROM or SMTP_USER or 'onboarding@resend.dev'
     if RESEND_API_KEY:
-        resend_from = MAIL_FROM if (MAIL_FROM and 'onboarding@resend.dev' in MAIL_FROM) else 'Sublime\'s <onboarding@resend.dev>'
+        if MAIL_FROM:
+            resend_from = f'Sublime\'s <{MAIL_FROM}>'
+        else:
+            resend_from = 'Sublime\'s <onboarding@resend.dev>'
         try:
             url = 'https://api.resend.com/emails'
             payload = json.dumps({
