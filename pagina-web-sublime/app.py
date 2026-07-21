@@ -2282,6 +2282,36 @@ SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 MAIL_FROM = os.environ.get('MAIL_FROM', '') or SMTP_USER
 SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', '0') == '1' or SMTP_PORT == 465
 
+def _send_smtp_message(msg):
+    if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
+        return False
+
+    # Intento 1: según puerto y configuración especificada
+    try:
+        if SMTP_USE_SSL and SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, 465, timeout=10) as server:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+                return True
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT or 587, timeout=10) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+                return True
+    except Exception as e:
+        app.logger.warning(f'Intento inicial SMTP falló ({e}). Probando puerto 587 con STARTTLS en Render...')
+        # Intento 2 (Fallback para Render/Cloud): Puerto 587 con STARTTLS
+        try:
+            with smtplib.SMTP(SMTP_HOST or 'smtp.gmail.com', 587, timeout=10) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.send_message(msg)
+                return True
+        except Exception as ex:
+            app.logger.error(f'Error al enviar email a {msg.get("To")}: {ex}')
+            return False
+
 def send_reset_email(to_email, token):
     if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
         return False
@@ -2302,20 +2332,7 @@ Si no solicitaste este cambio, ignora este mensaje.
     msg['Subject'] = 'Restablecimiento de contraseña - Sublime\'s'
     msg['From'] = MAIL_FROM
     msg['To'] = to_email
-    try:
-        if SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        return True
-    except Exception as e:
-        app.logger.error(f'Error enviando email a {to_email}: {e}')
-        return False
+    return _send_smtp_message(msg)
 
 STATUS_CONFIG = {
     'Pendiente de Verificación': {
@@ -2535,21 +2552,10 @@ Gracias por confiar en Sublime's.
     msg.attach(MIMEText(plain_body, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-    try:
-        if SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
-        app.logger.info(f'[EMAIL ENVIADO] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
-        return True
-    except Exception as e:
-        app.logger.error(f'Error enviando email de estado a {cliente_email}: {e}')
-        return False
+    sent = _send_smtp_message(msg)
+    if sent:
+        app.logger.info(f'[EMAIL ENVIADO OK] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
+    return sent
 
 @app.route('/api/forgot', methods=['POST'])
 def api_forgot():
