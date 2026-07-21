@@ -2282,34 +2282,80 @@ SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 MAIL_FROM = os.environ.get('MAIL_FROM', '') or SMTP_USER
 SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', '0') == '1' or SMTP_PORT == 465
 
+import socket
+
+class IPv4SMTP(smtplib.SMTP):
+    def _get_socket(self, host, port, timeout):
+        res_list = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        if not res_list:
+            raise OSError(f"No IPv4 address found for {host}")
+        err = None
+        for res in res_list:
+            af, socktype, proto, canonname, sa = res
+            try:
+                s = socket.socket(af, socktype, proto)
+                if timeout is not None:
+                    s.settimeout(timeout)
+                s.connect(sa)
+                return s
+            except OSError as e:
+                err = e
+                if s:
+                    s.close()
+        raise err or OSError("Failed IPv4 socket connection")
+
+class IPv4SMTP_SSL(smtplib.SMTP_SSL):
+    def _get_socket(self, host, port, timeout):
+        res_list = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        if not res_list:
+            raise OSError(f"No IPv4 address found for {host}")
+        err = None
+        for res in res_list:
+            af, socktype, proto, canonname, sa = res
+            try:
+                s = socket.socket(af, socktype, proto)
+                if timeout is not None:
+                    s.settimeout(timeout)
+                s.connect(sa)
+                return self.context.wrap_socket(s, server_hostname=self._host)
+            except OSError as e:
+                err = e
+                if s:
+                    s.close()
+        raise err or OSError("Failed IPv4 SSL socket connection")
+
 def _send_smtp_message(msg):
     if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
         return False
 
-    # Intento 1: según puerto y configuración especificada
+    host = SMTP_HOST or 'smtp.gmail.com'
+    port = SMTP_PORT or 587
+    use_ssl = (SMTP_USE_SSL and port == 465)
+
+    # Intento 1: usar socket IPv4 según configuración
     try:
-        if SMTP_USE_SSL and SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, 465, timeout=10) as server:
+        if use_ssl:
+            with IPv4SMTP_SSL(host, 465, timeout=10) as server:
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
                 return True
         else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT or 587, timeout=10) as server:
+            with IPv4SMTP(host, port, timeout=10) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
                 return True
     except Exception as e:
-        app.logger.warning(f'Intento inicial SMTP falló ({e}). Probando puerto 587 con STARTTLS en Render...')
-        # Intento 2 (Fallback para Render/Cloud): Puerto 587 con STARTTLS
+        app.logger.warning(f'Intento 1 IPv4 falló ({e}). Probando puerto 587 IPv4 con STARTTLS...')
+        # Intento 2 (Fallback): Puerto 587 IPv4 con STARTTLS
         try:
-            with smtplib.SMTP(SMTP_HOST or 'smtp.gmail.com', 587, timeout=10) as server:
+            with IPv4SMTP('smtp.gmail.com', 587, timeout=10) as server:
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
                 return True
         except Exception as ex:
-            app.logger.error(f'Error al enviar email a {msg.get("To")}: {ex}')
+            app.logger.error(f'Error final enviando email a {msg.get("To")}: {ex}')
             return False
 
 def send_reset_email(to_email, token):
