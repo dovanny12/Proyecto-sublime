@@ -2275,12 +2275,18 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
+import threading
+
 SMTP_HOST = os.environ.get('SMTP_HOST', '')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 MAIL_FROM = os.environ.get('MAIL_FROM', '') or SMTP_USER
 SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', '0') == '1' or SMTP_PORT == 465
+
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 
 import socket
 
@@ -2324,6 +2330,76 @@ class IPv4SMTP_SSL(smtplib.SMTP_SSL):
                     s.close()
         raise err or OSError("Failed IPv4 SSL socket connection")
 
+def _send_via_http_api(to_email, subject, html_body, plain_body):
+    from_email = MAIL_FROM or SMTP_USER or 'onboarding@resend.dev'
+    if RESEND_API_KEY:
+        try:
+            url = 'https://api.resend.com/emails'
+            payload = json.dumps({
+                'from': from_email,
+                'to': [to_email],
+                'subject': subject,
+                'html': html_body,
+                'text': plain_body
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={
+                'Authorization': f'Bearer {RESEND_API_KEY}',
+                'Content-Type': 'application/json'
+            }, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 201):
+                    app.logger.info(f'[EMAIL VIA RESEND API OK] Enviado a {to_email}')
+                    return True
+        except Exception as e:
+            app.logger.error(f'Error enviando vía Resend API: {e}')
+
+    if BREVO_API_KEY:
+        try:
+            url = 'https://api.brevo.com/v3/smtp/email'
+            payload = json.dumps({
+                'sender': {'email': from_email, 'name': "Sublime's"},
+                'to': [{'email': to_email}],
+                'subject': subject,
+                'htmlContent': html_body,
+                'textContent': plain_body
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={
+                'api-key': BREVO_API_KEY,
+                'Content-Type': 'application/json',
+                'accept': 'application/json'
+            }, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 201, 202):
+                    app.logger.info(f'[EMAIL VIA BREVO API OK] Enviado a {to_email}')
+                    return True
+        except Exception as e:
+            app.logger.error(f'Error enviando vía Brevo API: {e}')
+
+    if SENDGRID_API_KEY:
+        try:
+            url = 'https://api.sendgrid.com/v3/mail/send'
+            payload = json.dumps({
+                'personalizations': [{'to': [{'email': to_email}]}],
+                'from': {'email': from_email, 'name': "Sublime's"},
+                'subject': subject,
+                'content': [
+                    {'type': 'text/plain', 'value': plain_body},
+                    {'type': 'text/html', 'value': html_body}
+                ]
+            }).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={
+                'Authorization': f'Bearer {SENDGRID_API_KEY}',
+                'Content-Type': 'application/json'
+            }, method='POST')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 201, 202):
+                    app.logger.info(f'[EMAIL VIA SENDGRID API OK] Enviado a {to_email}')
+                    return True
+        except Exception as e:
+            app.logger.error(f'Error enviando vía SendGrid API: {e}')
+
+    return False
+
 def _send_smtp_message(msg):
     if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
         return False
@@ -2332,7 +2408,6 @@ def _send_smtp_message(msg):
     port = SMTP_PORT or 587
     use_ssl = (SMTP_USE_SSL and port == 465)
 
-    # Intento 1: usar socket IPv4 según configuración
     try:
         if use_ssl:
             with IPv4SMTP_SSL(host, 465, timeout=10) as server:
@@ -2346,8 +2421,7 @@ def _send_smtp_message(msg):
                 server.send_message(msg)
                 return True
     except Exception as e:
-        app.logger.warning(f'Intento 1 IPv4 falló ({e}). Probando puerto 587 IPv4 con STARTTLS...')
-        # Intento 2 (Fallback): Puerto 587 IPv4 con STARTTLS
+        app.logger.warning(f'Intento 1 IPv4 SMTP falló ({e}). Probando puerto 587 IPv4 con STARTTLS...')
         try:
             with IPv4SMTP('smtp.gmail.com', 587, timeout=10) as server:
                 server.starttls()
@@ -2357,6 +2431,20 @@ def _send_smtp_message(msg):
         except Exception as ex:
             app.logger.error(f'Error final enviando email a {msg.get("To")}: {ex}')
             return False
+
+def _async_email_worker(msg, to_email, subject, html_body, plain_body):
+    if RESEND_API_KEY or BREVO_API_KEY or SENDGRID_API_KEY:
+        if _send_via_http_api(to_email, subject, html_body, plain_body):
+            return
+
+    if SMTP_HOST and SMTP_USER and MAIL_FROM:
+        _send_smtp_message(msg)
+    else:
+        app.logger.info(f'[SIMULACIÓN EMAIL OK] Notificación enviada a {to_email}')
+
+def dispatch_email_bg(msg, to_email, subject, html_body, plain_body):
+    threading.Thread(target=_async_email_worker, args=(msg, to_email, subject, html_body, plain_body), daemon=True).start()
+    return True
 
 def send_reset_email(to_email, token):
     if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
@@ -2586,22 +2674,17 @@ Gracias por confiar en Sublime's.
 </html>
 '''
 
-    if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
-        app.logger.info(f'[SIMULACIÓN EMAIL OK] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
-        return True
-
+    subject = f'📦 {config["icon"]} Actualización de tu pedido #{order_id}: {nuevo_estado} - Sublime\'s'
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = f'📦 {config["icon"]} Actualización de tu pedido #{order_id}: {nuevo_estado} - Sublime\'s'
-    msg['From'] = MAIL_FROM
+    msg['Subject'] = subject
+    msg['From'] = MAIL_FROM or SMTP_USER
     msg['To'] = cliente_email
 
     msg.attach(MIMEText(plain_body, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-    sent = _send_smtp_message(msg)
-    if sent:
-        app.logger.info(f'[EMAIL ENVIADO OK] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
-    return sent
+    dispatch_email_bg(msg, cliente_email, subject, html_body, plain_body)
+    return True
 
 @app.route('/api/forgot', methods=['POST'])
 def api_forgot():
