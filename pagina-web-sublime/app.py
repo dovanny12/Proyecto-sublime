@@ -2272,6 +2272,7 @@ conn.close()
 import smtplib
 import secrets
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
 SMTP_HOST = os.environ.get('SMTP_HOST', '')
@@ -2316,70 +2317,224 @@ Si no solicitaste este cambio, ignora este mensaje.
         app.logger.error(f'Error enviando email a {to_email}: {e}')
         return False
 
-STATUS_MESSAGES = {
-    'Pendiente de Verificaci\u00f3n': (
-        'Hemos recibido tu pedido y está pendiente de verificación de pago.',
-        'Pendiente de Verificación'
-    ),
-    'Procesando': (
-        '¡Tu pago ha sido verificado! Tu pedido está siendo procesado. Pronto lo tendremos listo para envío.',
-        'Procesando'
-    ),
-    'Enviado': (
-        '¡Tu pedido ha sido enviado! Pronto recibirás más información sobre el seguimiento.',
-        'Enviado'
-    ),
-    'Entregado': (
-        '¡Tu pedido ha sido entregado! Esperamos que lo disfrutes. Gracias por confiar en Sublime\'s.',
-        'Entregado'
-    ),
-    'Cancelado': (
-        'Tu pedido ha sido cancelado. Si tienes dudas, contáctanos.',
-        'Cancelado'
-    ),
+STATUS_CONFIG = {
+    'Pendiente de Verificación': {
+        'title': 'Pedido Recibido - Pendiente de Verificación',
+        'badge_bg': '#fff3cd',
+        'badge_color': '#856404',
+        'icon': '⏳',
+        'description': 'Hemos recibido tu pedido correctamente. Actualmente se encuentra en proceso de verificación de pago. Tan pronto como sea validado, comenzaremos a prepararlo.',
+    },
+    'Procesando': {
+        'title': '¡Pago Verificado! Pedido en Procesamiento',
+        'badge_bg': '#cce5ff',
+        'badge_color': '#004085',
+        'icon': '⚡',
+        'description': '¡Excelente noticia! Tu pago ha sido verificado con éxito. Tu pedido ya está siendo preparado y procesado por nuestro equipo.',
+    },
+    'Enviado': {
+        'title': '¡Tu Pedido Ha Sido Enviado!',
+        'badge_bg': '#d1ecf1',
+        'badge_color': '#0c5460',
+        'icon': '📦',
+        'description': '¡Tu pedido va en camino! Ha sido despachado a través de nuestro servicio de envío.',
+    },
+    'Entregado': {
+        'title': '¡Pedido Entregado con Éxito!',
+        'badge_bg': '#d4edda',
+        'badge_color': '#155724',
+        'icon': '🎉',
+        'description': 'Tu pedido ha sido marcado como entregado. Esperamos que disfrutes tus productos. ¡Muchas gracias por comprar en Sublime\'s!',
+    },
+    'Cancelado': {
+        'title': 'Pedido Cancelado',
+        'badge_bg': '#f8d7da',
+        'badge_color': '#721c24',
+        'icon': '❌',
+        'description': 'Tu pedido ha sido cancelado. Si crees que esto es un error o necesitas ayuda, por favor contáctanos.',
+    }
 }
 
 def send_order_status_email(order_id, nuevo_estado):
-    if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
-        return False
     conn = get_shared_db()
     row = conn.execute(
-        '''SELECT c.correo, c.nombre, p.id_pedido, p.total
+        '''SELECT c.correo, c.nombre, p.id_pedido, p.total, p.fecha,
+                  e.direccion_envio, e.empresa_envio, e.numero_guia, e.metodo_pago
            FROM pedidos p
            JOIN clientes c ON p.id_cliente = c.id_cliente
+           LEFT JOIN envios e ON p.id_pedido = e.id_pedido
            WHERE p.id_pedido = ? LIMIT 1''',
         (order_id,)
     ).fetchone()
-    conn.close()
+
     if not row:
+        conn.close()
         return False
 
+    items = conn.execute(
+        '''SELECT pr.nombre, dp.cantidad, dp.precio_unitario
+           FROM detalle_pedidos dp
+           JOIN productos pr ON dp.id_producto = pr.id_producto
+           WHERE dp.id_pedido = ?''',
+        (order_id,)
+    ).fetchall()
+    conn.close()
+
     cliente_email = row['correo']
-    cliente_nombre = row['nombre']
-    total = row['total']
+    cliente_nombre = row['nombre'] or 'Cliente'
+    total = row['total'] or 0.0
+    fecha_pedido = row['fecha'] or ''
+    direccion = row['direccion_envio'] or 'N/A'
+    empresa_envio = row['empresa_envio'] or ''
+    numero_guia = row['numero_guia'] or ''
+    metodo_pago = row['metodo_pago'] or 'N/A'
 
-    msg_info = STATUS_MESSAGES.get(nuevo_estado)
-    if msg_info:
-        body_text, estado_label = msg_info
-    else:
-        body_text = f'El estado de tu pedido ha cambiado a: {nuevo_estado}.'
-        estado_label = nuevo_estado
+    config = STATUS_CONFIG.get(nuevo_estado, {
+        'title': f'Actualización de Pedido #{order_id}',
+        'badge_bg': '#e2e3e5',
+        'badge_color': '#383d41',
+        'icon': '📌',
+        'description': f'El estado de tu pedido ha cambiado a: {nuevo_estado}.'
+    })
 
-    msg = MIMEText(f'''Hola {cliente_nombre},
+    # Construcción de la tabla de productos (HTML)
+    items_rows_html = ''
+    items_text_list = ''
+    for item in items:
+        p_nombre = item['nombre']
+        p_qty = item['cantidad']
+        p_precio = item['precio_unitario']
+        p_subtotal = p_qty * p_precio
+        items_rows_html += f'''
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;">{p_nombre}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">{p_qty}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${p_precio:.2f}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${p_subtotal:.2f}</td>
+        </tr>'''
+        items_text_list += f"- {p_nombre} x{p_qty} (${p_subtotal:.2f})\n"
 
-{body_text}
+    # Sección de información de envío/guía si está enviado
+    tracking_html = ''
+    tracking_text = ''
+    if nuevo_estado == 'Enviado' and (empresa_envio or numero_guia):
+        tracking_html = f'''
+        <div style="background-color: #f0f7ff; border-left: 4px solid #0056b3; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h4 style="margin: 0 0 10px 0; color: #0056b3;">🚚 Información de Seguimiento</h4>
+            {f'<p style="margin: 3px 0;"><strong>Empresa de Envío:</strong> {empresa_envio}</p>' if empresa_envio else ''}
+            {f'<p style="margin: 3px 0;"><strong>Número de Guía:</strong> {numero_guia}</p>' if numero_guia else ''}
+        </div>'''
+        tracking_text = f"\nInformación de Envío:\n- Empresa: {empresa_envio}\n- Guía: {numero_guia}\n"
 
-Detalles del pedido:
-- Número de pedido: #{order_id}
-- Estado: {estado_label}
-- Total: ${total:.2f} USD
+    plain_body = f'''Hola {cliente_nombre},
 
-Si tienes alguna pregunta, no dudes en contactarnos.
+{config['description']}
 
-— Sublime's''')
-    msg['Subject'] = f'Actualización de tu pedido #{order_id} - Sublime\'s'
+Detalles del Pedido #{order_id}:
+- Estado: {nuevo_estado}
+- Fecha: {fecha_pedido}
+- Método de Pago: {metodo_pago}
+- Dirección de Envío: {direccion}
+{tracking_text}
+Productos:
+{items_text_list}
+Total: ${total:.2f} USD
+
+Gracias por confiar en Sublime's.
+— El equipo de Sublime's
+'''
+
+    html_body = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1e222d, #121418); padding: 30px 20px; text-align: center;">
+            <h1 style="color: #00ff80; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 1px;">Sublime's</h1>
+            <p style="color: #a0aec0; margin: 5px 0 0 0; font-size: 13px;">Notificación de Estado de Pedido</p>
+        </div>
+
+        <!-- Banner Estado -->
+        <div style="padding: 25px 30px; text-align: center; border-bottom: 1px solid #edf2f7;">
+            <span style="font-size: 38px; display: block; margin-bottom: 10px;">{config['icon']}</span>
+            <span style="display: inline-block; background-color: {config['badge_bg']}; color: {config['badge_color']}; font-weight: 700; font-size: 13px; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+                {nuevo_estado}
+            </span>
+            <h2 style="color: #2d3748; margin: 15px 0 10px 0; font-size: 20px;">{config['title']}</h2>
+            <p style="color: #4a5568; font-size: 15px; line-height: 1.5; margin: 0;">{config['description']}</p>
+        </div>
+
+        <!-- Detalle del Pedido -->
+        <div style="padding: 25px 30px;">
+            <h3 style="color: #2d3748; margin-top: 0; font-size: 16px; border-bottom: 2px solid #00ff80; padding-bottom: 8px; display: inline-block;">
+                Resumen del Pedido #{order_id}
+            </h3>
+
+            <table style="width: 100%; font-size: 14px; margin-bottom: 15px; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 5px 0; color: #718096; width: 40%;"><strong>Fecha:</strong></td>
+                    <td style="padding: 5px 0; color: #2d3748;">{fecha_pedido}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #718096;"><strong>Método de Pago:</strong></td>
+                    <td style="padding: 5px 0; color: #2d3748;">{metodo_pago}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #718096;"><strong>Dirección:</strong></td>
+                    <td style="padding: 5px 0; color: #2d3748;">{direccion}</td>
+                </tr>
+            </table>
+
+            {tracking_html}
+
+            <!-- Productos -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
+                <thead>
+                    <tr style="background-color: #f7fafc; color: #4a5568;">
+                        <th style="padding: 10px; text-align: left;">Producto</th>
+                        <th style="padding: 10px; text-align: center;">Cant.</th>
+                        <th style="padding: 10px; text-align: right;">Precio</th>
+                        <th style="padding: 10px; text-align: right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_rows_html}
+                </tbody>
+            </table>
+
+            <!-- Total -->
+            <div style="text-align: right; margin-top: 20px; padding-top: 15px; border-top: 2px solid #edf2f7;">
+                <span style="font-size: 15px; color: #718096;">Total: </span>
+                <span style="font-size: 22px; font-weight: 800; color: #2b6cb0;">${total:.2f} USD</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f7fafc; padding: 20px; text-align: center; color: #a0aec0; font-size: 12px; border-top: 1px solid #edf2f7;">
+            <p style="margin: 0 0 5px 0;">¿Tienes dudas sobre tu pedido? Escríbenos a nuestro correo de atención.</p>
+            <p style="margin: 0;">© Sublime's - Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+'''
+
+    if not SMTP_HOST or not SMTP_USER or not MAIL_FROM:
+        app.logger.info(f'[SIMULACIÓN EMAIL OK] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
+        return True
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'📦 {config["icon"]} Actualización de tu pedido #{order_id}: {nuevo_estado} - Sublime\'s'
     msg['From'] = MAIL_FROM
     msg['To'] = cliente_email
+
+    msg.attach(MIMEText(plain_body, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+
     try:
         if SMTP_USE_SSL:
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
@@ -2390,6 +2545,7 @@ Si tienes alguna pregunta, no dudes en contactarnos.
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
+        app.logger.info(f'[EMAIL ENVIADO] Notificación de estado "{nuevo_estado}" enviada a {cliente_email} para el pedido #{order_id}')
         return True
     except Exception as e:
         app.logger.error(f'Error enviando email de estado a {cliente_email}: {e}')
