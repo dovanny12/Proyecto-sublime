@@ -28,10 +28,19 @@
                 </button>
             </div>
 
-            <!-- 2D Mockup canvas (primary editing view) -->
+            <!-- 2D Mockup PNG editor (primary editing view) -->
             <div class="mockup2d-container" id="mockup2dContainer">
-                <canvas id="mockup2dCanvas"></canvas>
-                <div class="mockup2d-tip"><i class="fa-solid fa-hand-pointer"></i> Arrastra el texto o imagen directamente</div>
+                <!-- Mockup PNG layer (product photo) -->
+                <div class="mockup-png-wrapper" id="mockupPngWrapper">
+                    <img id="mockupPngImg" src="" alt="Mockup producto" class="mockup-png-base" />
+                    <!-- Color tint overlay (multiply blend) -->
+                    <div class="mockup-color-tint" id="mockupColorTint"></div>
+                    <!-- Design canvas overlay (text + image) -->
+                    <canvas id="mockup2dCanvas" class="mockup-design-canvas"></canvas>
+                    <!-- Print zone indicator -->
+                    <div class="mockup-print-zone" id="mockupPrintZone"></div>
+                </div>
+                <div class="mockup2d-tip"><i class="fa-solid fa-hand-pointer"></i> Arrastra el texto o imagen directamente sobre el producto</div>
             </div>
 
             <!-- 3D container (secondary / presentation) -->
@@ -1356,108 +1365,96 @@ function updateCanvasTexture() {
 }
 
 // ════════════════════════════════════════════
-// 2D MOCKUP SYSTEM
+// 2D MOCKUP PNG SYSTEM  (Printful-style)
 // ════════════════════════════════════════════
 const mockup2dCanvas = document.getElementById('mockup2dCanvas');
 const m2dCtx = mockup2dCanvas ? mockup2dCanvas.getContext('2d') : null;
 
-// Product silhouette shapes for the 2D mockup
-const productShapes = {
-    franela: (ctx, w, h) => {
-        const cx = w / 2, scale = Math.min(w, h) * 0.008;
-        ctx.beginPath();
-        // neck
-        ctx.moveTo(cx - 6*scale, 8*scale);
-        ctx.quadraticCurveTo(cx, 14*scale, cx + 6*scale, 8*scale);
-        // right shoulder
-        ctx.lineTo(cx + 20*scale, 4*scale);
-        // right sleeve end
-        ctx.lineTo(cx + 32*scale, 20*scale);
-        ctx.lineTo(cx + 26*scale, 22*scale);
-        // right armhole down
-        ctx.lineTo(cx + 20*scale, 10*scale);
-        // right body
-        ctx.lineTo(cx + 18*scale, 90*scale);
-        // bottom right
-        ctx.lineTo(cx + 18*scale, 92*scale);
-        ctx.lineTo(cx - 18*scale, 92*scale);
-        // left body
-        ctx.lineTo(cx - 18*scale, 10*scale);
-        // left armhole
-        ctx.lineTo(cx - 26*scale, 22*scale);
-        ctx.lineTo(cx - 32*scale, 20*scale);
-        ctx.lineTo(cx - 20*scale, 4*scale);
-        ctx.closePath();
-    },
-    taza: (ctx, w, h) => {
-        const cx = w/2, cy = h/2, rw = w*0.27, rh = h*0.38;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI*2);
-        ctx.moveTo(cx + rw, cy - rh*0.25);
-        ctx.quadraticCurveTo(cx + rw + w*0.18, cy, cx + rw, cy + rh*0.25);
-    },
-    gorra: (ctx, w, h) => {
-        const cx = w/2, top = h*0.22, mid = h*0.6;
-        ctx.beginPath();
-        ctx.arc(cx, mid, w*0.35, Math.PI, 0);
-        ctx.lineTo(cx + w*0.42, mid + h*0.06);
-        ctx.lineTo(cx - w*0.42, mid + h*0.06);
-        ctx.closePath();
-        // visor
-        ctx.moveTo(cx - w*0.28, mid + h*0.05);
-        ctx.quadraticCurveTo(cx, mid + h*0.22, cx + w*0.38, mid + h*0.05);
-    },
-    llavero: (ctx, w, h) => {
-        const cx = w/2, cy = h/2;
-        ctx.beginPath();
-        ctx.roundRect(cx - w*0.22, cy - h*0.3, w*0.44, h*0.6, [12]);
-    },
-    filtro: (ctx, w, h) => {
-        const cx = w/2, cy = h/2;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, w*0.2, h*0.4, 0, 0, Math.PI*2);
-    },
-    pen: (ctx, w, h) => {
-        const cx = w/2, cy = h/2;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, w*0.07, h*0.44, 0, 0, Math.PI*2);
-    },
-    mousepad: (ctx, w, h) => {
-        ctx.beginPath();
-        ctx.roundRect(w*0.08, h*0.2, w*0.84, h*0.6, [16]);
-    }
+// ── Mockup PNG images map (preloaded)
+const mockupImages = {};
+const mockupSrcs = {
+    franela:  "{{ url_for('static', filename='images/mockups/mockup_franela.png') }}",
+    taza:     "{{ url_for('static', filename='images/mockups/mockup_taza.png') }}",
+    gorra:    "{{ url_for('static', filename='images/mockups/mockup_gorra.png') }}",
+    llavero:  "{{ url_for('static', filename='images/mockups/mockup_llavero.png') }}",
+    filtro:   "{{ url_for('static', filename='images/mockups/mockup_filtro.png') }}",
+    pen:      "{{ url_for('static', filename='images/mockups/mockup_pen.png') }}",
+    mousepad: "{{ url_for('static', filename='images/mockups/mockup_mousepad.png') }}",
+    short:    "{{ url_for('static', filename='images/mockups/mockup_franela.png') }}"
 };
 
-// Print zone for each product (normalized 0-1 within mockup)
+// Preload all mockup images
+(function preloadMockups() {
+    Object.entries(mockupSrcs).forEach(([key, src]) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            mockupImages[key] = img;
+            // Refresh if this is the current product
+            const cur = document.getElementById('product_type');
+            if (cur && cur.value === key) drawMockup2D();
+        };
+        img.src = src;
+    });
+})();
+
+// ── Print zones calibrated to the actual PNG photos (normalized 0-1)
 const printZones = {
-    franela:  { x: 0.30, y: 0.18, w: 0.40, h: 0.55 },
-    taza:     { x: 0.22, y: 0.25, w: 0.56, h: 0.50 },
-    gorra:    { x: 0.33, y: 0.15, w: 0.34, h: 0.38 },
-    llavero:  { x: 0.30, y: 0.18, w: 0.40, h: 0.60 },
-    filtro:   { x: 0.33, y: 0.18, w: 0.34, h: 0.60 },
-    pen:      { x: 0.38, y: 0.15, w: 0.24, h: 0.70 },
-    mousepad: { x: 0.15, y: 0.22, w: 0.70, h: 0.56 },
-    short:    { x: 0.28, y: 0.10, w: 0.44, h: 0.65 }
+    franela:  { x: 0.32, y: 0.30, w: 0.36, h: 0.38 },
+    taza:     { x: 0.10, y: 0.28, w: 0.55, h: 0.44 },
+    gorra:    { x: 0.28, y: 0.22, w: 0.44, h: 0.36 },
+    llavero:  { x: 0.30, y: 0.42, w: 0.40, h: 0.48 },
+    filtro:   { x: 0.26, y: 0.32, w: 0.48, h: 0.50 },
+    pen:      { x: 0.20, y: 0.42, w: 0.60, h: 0.16 },
+    mousepad: { x: 0.10, y: 0.18, w: 0.80, h: 0.64 },
+    short:    { x: 0.32, y: 0.30, w: 0.36, h: 0.38 }
 };
 
-// Map text preset to normalized (x,y) per product
+// ── Text preset positions (relative to print zone)
 const textPresets = {
-    center: (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.4 }),
-    chest:  (pz) => ({ x: pz.x + pz.w*0.25, y: pz.y + pz.h*0.2 }),
-    top:    (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.1 }),
-    bottom: (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.8 })
+    center: (pz) => ({ x: pz.x + pz.w/2,      y: pz.y + pz.h*0.45 }),
+    chest:  (pz) => ({ x: pz.x + pz.w*0.3,    y: pz.y + pz.h*0.22 }),
+    top:    (pz) => ({ x: pz.x + pz.w/2,      y: pz.y + pz.h*0.12 }),
+    bottom: (pz) => ({ x: pz.x + pz.w/2,      y: pz.y + pz.h*0.82 })
 };
+
+// ── Update the CSS color tint overlay on the PNG
+function updateMockupColorTint(hexColor) {
+    const tintEl = document.getElementById('mockupColorTint');
+    if (!tintEl) return;
+    // Convert hex to rgba with controlled opacity for multiply blend
+    if (!hexColor || hexColor === '#ffffff' || hexColor === '#FFFFFF') {
+        tintEl.style.opacity = '0';
+        return;
+    }
+    tintEl.style.background = hexColor;
+    tintEl.style.opacity = '0.55';
+}
+
+// ── Update the print zone dashed border (CSS div overlay)
+function updatePrintZoneOverlay(productType) {
+    const pzEl = document.getElementById('mockupPrintZone');
+    if (!pzEl) return;
+    const pz = printZones[productType] || printZones['franela'];
+    pzEl.style.left   = (pz.x * 100) + '%';
+    pzEl.style.top    = (pz.y * 100) + '%';
+    pzEl.style.width  = (pz.w * 100) + '%';
+    pzEl.style.height = (pz.h * 100) + '%';
+    pzEl.style.opacity = '1';
+}
 
 function resizeMockup2D() {
     if (!mockup2dCanvas) return;
+    const wrapper = document.getElementById('mockupPngWrapper');
     const container = document.getElementById('mockup2dContainer');
-    if (!container) return;
-    const w = container.clientWidth || 400;
-    const h = Math.round(w * 0.9);
-    mockup2dCanvas.width = w;
-    mockup2dCanvas.height = h;
-    mockup2dCanvas.style.width = w + 'px';
-    mockup2dCanvas.style.height = h + 'px';
+    if (!container || !wrapper) return;
+    const w = container.clientWidth || 420;
+    wrapper.style.width = w + 'px';
+    wrapper.style.height = w + 'px';  // square container
+    mockup2dCanvas.width  = w;
+    mockup2dCanvas.height = w;
+    mockup2dCanvas.style.width  = w + 'px';
+    mockup2dCanvas.style.height = w + 'px';
     drawMockup2D();
 }
 
@@ -1477,42 +1474,38 @@ function drawMockup2D() {
     const imgNormY = parseFloat(document.getElementById('imgPosY').value);
     const imgScaleVal = parseFloat((document.getElementById('imgScale') || {}).value || 0.4);
 
-    // Clear
+    // Clear canvas (design overlay only — PNG is shown via <img> tag below)
     m2dCtx.clearRect(0, 0, W, H);
 
-    // Background
-    m2dCtx.fillStyle = 'rgba(0,0,0,0)';
-    m2dCtx.fillRect(0, 0, W, H);
+    // ── Update PNG image source (swaps the product photo)
+    const pngImg = document.getElementById('mockupPngImg');
+    if (pngImg) {
+        const newSrc = mockupSrcs[productType] || mockupSrcs['franela'];
+        if (pngImg.src !== newSrc && !pngImg.src.endsWith(newSrc.split('/').pop())) {
+            pngImg.style.opacity = '0';
+            pngImg.src = newSrc;
+            pngImg.onload = () => {
+                pngImg.style.transition = 'opacity 0.35s ease';
+                pngImg.style.opacity = '1';
+                drawMockup2D();
+            };
+        } else if (parseFloat(pngImg.style.opacity) < 0.5) {
+            pngImg.style.opacity = '1';
+        }
+    }
 
-    // Draw product silhouette
-    const shapeFn = productShapes[productType] || productShapes['franela'];
-    m2dCtx.save();
-    // Shadow for depth
-    m2dCtx.shadowColor = 'rgba(0,0,0,0.28)';
-    m2dCtx.shadowBlur = 24;
-    m2dCtx.shadowOffsetY = 8;
-    m2dCtx.fillStyle = baseColor;
-    shapeFn(m2dCtx, W, H);
-    m2dCtx.fill();
-    m2dCtx.shadowColor = 'transparent';
-    // Outline
-    m2dCtx.strokeStyle = 'rgba(255,255,255,0.15)';
-    m2dCtx.lineWidth = 1.5;
-    m2dCtx.stroke();
-    m2dCtx.restore();
+    // ── Color tint overlay
+    updateMockupColorTint(baseColor);
 
-    // Draw printable zone dashed border
+    // ── Print zone dashed indicator
+    updatePrintZoneOverlay(productType);
+
+    // ── Get calibrated print zone for design placement
     const pz = printZones[productType] || printZones['franela'];
-    const pzX = pz.x * W, pzY = pz.y * H, pzW = pz.w * W, pzH = pz.h * H;
-    m2dCtx.save();
-    m2dCtx.setLineDash([5, 4]);
-    m2dCtx.strokeStyle = 'rgba(0,230,100,0.45)';
-    m2dCtx.lineWidth = 1.5;
-    m2dCtx.strokeRect(pzX, pzY, pzW, pzH);
-    m2dCtx.setLineDash([]);
-    m2dCtx.restore();
+    const pzX = pz.x * W, pzY = pz.y * H;
+    const pzW = pz.w * W, pzH = pz.h * H;
 
-    // Draw uploaded image
+    // ── Draw uploaded image
     if (uploadedImage) {
         const maxPx = Math.min(pzW, pzH) * imgScaleVal * 1.6;
         const iw = maxPx;
@@ -1524,51 +1517,56 @@ function drawMockup2D() {
         m2dCtx.imageSmoothingQuality = 'high';
         m2dCtx.drawImage(uploadedImage, ix - iw/2, iy - ih/2, iw, ih);
         // Selection indicator
-        m2dCtx.strokeStyle = 'rgba(0,230,100,0.8)';
+        m2dCtx.strokeStyle = 'rgba(80,255,140,0.9)';
         m2dCtx.lineWidth = 2;
-        m2dCtx.setLineDash([4,3]);
+        m2dCtx.setLineDash([5,4]);
         m2dCtx.strokeRect(ix - iw/2 - 3, iy - ih/2 - 3, iw + 6, ih + 6);
         m2dCtx.setLineDash([]);
-        // Drag handle
-        m2dCtx.fillStyle = 'rgba(0,230,100,0.9)';
+        // Drag handle dot
+        m2dCtx.fillStyle = 'rgba(80,255,140,1)';
         m2dCtx.beginPath();
-        m2dCtx.arc(ix + iw/2, iy - ih/2, 7, 0, Math.PI*2);
+        m2dCtx.arc(ix + iw/2 - 2, iy - ih/2 + 2, 7, 0, Math.PI*2);
         m2dCtx.fill();
         m2dCtx.restore();
     }
 
-    // Draw clipart
+    // ── Draw clipart
     if (selectedClipart) {
         const cx2 = (pz.x + pz.w * 0.5) * W;
-        const cy2 = (pz.y + pz.h * 0.5) * H;
-        const emojiPx = Math.round(Math.min(pzW, pzH) * 0.35);
+        const cy2 = (pz.y + pz.h * 0.48) * H;
+        const emojiPx = Math.round(Math.min(pzW, pzH) * 0.38);
+        m2dCtx.save();
         m2dCtx.font = emojiPx + 'px serif';
         m2dCtx.textAlign = 'center';
         m2dCtx.textBaseline = 'middle';
         m2dCtx.fillText(selectedClipart, cx2, cy2);
+        m2dCtx.restore();
     }
 
-    // Draw text
+    // ── Draw text
     if (text.trim()) {
         const tx = textNormX * W;
         const ty = textNormY * H;
-        const fontSize = Math.round(Math.min(pzW, pzH) * 0.1 * textSize);
+        const fontSize = Math.round(Math.min(pzW, pzH) * 0.13 * textSize);
         m2dCtx.save();
         m2dCtx.font = `bold ${fontSize}px ${font}, sans-serif`;
         m2dCtx.textAlign = 'center';
         m2dCtx.textBaseline = 'middle';
-        // Shadow for contrast against product color
-        m2dCtx.shadowColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.3)';
-        m2dCtx.shadowBlur = 6;
+        // Drop shadow for contrast over photo
+        m2dCtx.shadowColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)';
+        m2dCtx.shadowBlur = 8;
+        m2dCtx.shadowOffsetY = 2;
         m2dCtx.fillStyle = textColor;
         m2dCtx.fillText(text, tx, ty);
         m2dCtx.shadowColor = 'transparent';
-        // Text drag handle
-        m2dCtx.strokeStyle = 'rgba(0,230,100,0.8)';
+        // Text position indicator (subtle circle)
+        m2dCtx.strokeStyle = 'rgba(80,255,140,0.75)';
         m2dCtx.lineWidth = 1.5;
+        m2dCtx.setLineDash([3,3]);
         m2dCtx.beginPath();
         m2dCtx.arc(tx, ty, 10, 0, Math.PI*2);
         m2dCtx.stroke();
+        m2dCtx.setLineDash([]);
         m2dCtx.restore();
     }
 }
@@ -2034,13 +2032,53 @@ updateCanvasTexture = function() {
     }
 };
 
-/* ── Capture 3D preview as product image on form submit ── */
+/* ── Capture 2D PNG mockup + design as order preview on submit ── */
 document.getElementById('customForm').addEventListener('submit', function() {
-    // Render the 3D scene one more time to ensure it's up-to-date
-    renderer.render(scene, camera);
-    // Capture the 3D viewport (shows design ON the product) instead of the raw texture
-    const dataUrl = renderer.domElement.toDataURL('image/png');
-    document.getElementById('designImageInput').value = dataUrl;
+    try {
+        // Check if 2D view is visible
+        const wrapper2d = document.getElementById('mockupPngWrapper');
+        const pngImg = document.getElementById('mockupPngImg');
+        const canvas2d = document.getElementById('mockup2dCanvas');
+        const tintEl = document.getElementById('mockupColorTint');
+        
+        if (wrapper2d && pngImg && pngImg.complete && canvas2d) {
+            // Composite: product PNG + tint + design into single high-res canvas
+            const OUT = 800;
+            const offscreen = document.createElement('canvas');
+            offscreen.width = OUT;
+            offscreen.height = OUT;
+            const ctx = offscreen.getContext('2d');
+            
+            // 1) Draw product photo
+            ctx.drawImage(pngImg, 0, 0, OUT, OUT);
+            
+            // 2) Draw color tint (multiply blend)
+            const tintOpacity = parseFloat(tintEl ? tintEl.style.opacity : '0') || 0;
+            if (tintOpacity > 0 && tintEl) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'multiply';
+                ctx.globalAlpha = tintOpacity;
+                ctx.fillStyle = tintEl.style.background || '#ffffff';
+                ctx.fillRect(0, 0, OUT, OUT);
+                ctx.restore();
+            }
+            
+            // 3) Draw design canvas on top (scaled to output size)
+            ctx.drawImage(canvas2d, 0, 0, OUT, OUT);
+            
+            document.getElementById('designImageInput').value = offscreen.toDataURL('image/png');
+        } else {
+            // Fallback: capture 3D viewport
+            renderer.render(scene, camera);
+            document.getElementById('designImageInput').value = renderer.domElement.toDataURL('image/png');
+        }
+    } catch(err) {
+        // Fallback
+        try {
+            renderer.render(scene, camera);
+            document.getElementById('designImageInput').value = renderer.domElement.toDataURL('image/png');
+        } catch(e2) {}
+    }
 });
 
 updateProductFields();

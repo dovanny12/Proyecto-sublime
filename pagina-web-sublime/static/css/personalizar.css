@@ -1249,41 +1249,94 @@ button.btn-primary:hover i { transform: translateX(3px); }
     color: var(--text-color);
 }
 
-/* ── 2D Mockup canvas container ──────────────── */
+/* ── 2D Mockup PNG system (Printful-style) ──── */
 .mockup2d-container {
     position: relative;
     width: 100%;
     border-radius: 20px;
     overflow: hidden;
-    background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,179,80,0.04));
-    border: 1px solid rgba(0, 179, 80, 0.2);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    background: #f8f8f8;
+    border: 1px solid rgba(0, 179, 80, 0.18);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.06);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 320px;
+    justify-content: flex-start;
+    padding: 0;
 }
 
 body.light-mode .mockup2d-container {
-    background: linear-gradient(145deg, #fff 0%, #f0fdf4 100%);
-    box-shadow: 0 16px 40px rgba(16, 185, 129, 0.12);
+    background: #f4f4f4;
+    box-shadow: 0 16px 40px rgba(16, 185, 129, 0.10);
 }
 
-.mockup2d-container canvas {
-    display: block;
-    max-width: 100%;
+/* PNG wrapper — this is the square preview area */
+.mockup-png-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 18px 18px 0 0;
+    background: #f2f2f2;
+}
+
+/* The actual product photo */
+.mockup-png-base {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
+}
+
+/* Color tint overlay — uses multiply blend to colorize white product */
+.mockup-color-tint {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    mix-blend-mode: multiply;
+    opacity: 0;
+    pointer-events: none;
+    transition: background 0.25s ease, opacity 0.25s ease;
+    border-radius: inherit;
+}
+
+/* Transparent canvas for design (text + images) on top */
+.mockup-design-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
     cursor: default;
+    pointer-events: all;
+    display: block;
+}
+
+/* Dashed print zone indicator div */
+.mockup-print-zone {
+    position: absolute;
+    z-index: 4;
+    border: 1.5px dashed rgba(80,255,140,0.50);
+    border-radius: 4px;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 0 0 0 transparent;
 }
 
 .mockup2d-tip {
     font-size: 0.72rem;
     color: var(--text-muted);
-    padding: 8px 14px;
+    padding: 8px 14px 10px;
     display: flex;
     align-items: center;
     gap: 6px;
     opacity: 0.75;
+    width: 100%;
+    justify-content: center;
 }
 
 .mockup2d-tip i {
