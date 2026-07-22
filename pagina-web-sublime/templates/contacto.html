@@ -14,120 +14,72 @@
         </div>
         <div>
             <h1 class="hero-title-solid" style="font-size: 2.5rem; margin-bottom: 6px;">Contáctanos</h1>
-            <p style="color: var(--text-muted); margin: 0;">Estamos aquí para ayudarte. Escríbenos y te respondemos pronto.</p>
+            <p style="color: var(--text-muted); margin: 0;">Estamos aquí para ayudarte. Escríbenos directamente por cualquiera de nuestros canales.</p>
         </div>
     </div>
 
-    <div class="contact-grid">
+    <div class="contact-info-grid reveal">
 
-        <!-- ── Formulario ───────────────────────────── -->
-        <div class="contact-card reveal">
-            <div class="contact-card-header">
-                <i class="fa-solid fa-paper-plane"></i>
-                <h2>Envíanos un Mensaje</h2>
+        <!-- WhatsApp -->
+        <a href="https://wa.me/584126607859" target="_blank" class="contact-channel-card">
+            <div class="contact-channel-icon" style="background: linear-gradient(135deg, #25D366, #128C7E);">
+                <i class="fa-brands fa-whatsapp"></i>
             </div>
+            <div class="contact-channel-body">
+                <p class="contact-info-label">WhatsApp</p>
+                <span class="contact-info-value">+58 412 660 7859</span>
+                <span class="contact-channel-cta">Abrir chat <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% for category, message in messages %}
-                    <div class="flash-message flash-{{ category }}" style="margin-bottom: 18px;">
-                        <i class="fa-solid fa-{{ 'circle-check' if category == 'success' else 'circle-exclamation' }}"></i>
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endwith %}
+        <!-- Correo -->
+        <a href="mailto:adminsublime@gmail.com" class="contact-channel-card">
+            <div class="contact-channel-icon" style="background: linear-gradient(135deg, #EA4335, #c0392b);">
+                <i class="fa-solid fa-envelope"></i>
+            </div>
+            <div class="contact-channel-body">
+                <p class="contact-info-label">Correo</p>
+                <span class="contact-info-value">adminsublime@gmail.com</span>
+                <span class="contact-channel-cta">Enviar correo <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
 
-            <form method="POST" action="{{ url_for('contacto') }}" class="contact-form">
-                <div class="form-group">
-                    <label for="contact-nombre">Tu nombre</label>
-                    <input type="text" id="contact-nombre" name="nombre" placeholder="¿Cómo te llamas?" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-email">Correo electrónico</label>
-                    <input type="email" id="contact-email" name="email" placeholder="tu@correo.com" required>
-                </div>
-                <div class="form-group">
-                    <label for="contact-asunto">Asunto</label>
-                    <input type="text" id="contact-asunto" name="asunto" placeholder="¿Sobre qué quieres hablar?">
-                </div>
-                <div class="form-group">
-                    <label for="contact-mensaje">Mensaje</label>
-                    <textarea id="contact-mensaje" name="mensaje" placeholder="Escribe tu mensaje aquí..." rows="5" required></textarea>
-                </div>
-                <button type="submit" class="contact-submit-btn">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar mensaje
-                </button>
-            </form>
+        <!-- Instagram -->
+        <a href="https://www.instagram.com/sublimespf/" target="_blank" class="contact-channel-card">
+            <div class="contact-channel-icon" style="background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);">
+                <i class="fa-brands fa-instagram"></i>
+            </div>
+            <div class="contact-channel-body">
+                <p class="contact-info-label">Instagram</p>
+                <span class="contact-info-value">@sublimespf</span>
+                <span class="contact-channel-cta">Ver perfil <i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
+
+        <!-- Horario -->
+        <div class="contact-channel-card no-link">
+            <div class="contact-channel-icon" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="contact-channel-body">
+                <p class="contact-info-label">Horario de atención</p>
+                <span class="contact-info-value">Lun – Sáb</span>
+                <span class="contact-channel-cta" style="cursor: default; opacity: 0.6;">9:00 AM – 6:00 PM</span>
+            </div>
         </div>
 
-        <!-- ── Columna derecha ───────────────────────── -->
-        <div>
+    </div>
 
-            <!-- Información de contacto -->
-            <div class="contact-card reveal">
-                <div class="contact-card-header">
-                    <i class="fa-solid fa-address-book"></i>
-                    <h2>Información de Contacto</h2>
-                </div>
-                <div class="contact-info-list">
-
-                    <div class="contact-info-item">
-                        <div class="contact-info-icon">
-                            <i class="fa-brands fa-whatsapp"></i>
-                        </div>
-                        <div>
-                            <p class="contact-info-label">WhatsApp</p>
-                            <a href="https://wa.me/584126607859" target="_blank" class="contact-info-value">+58 412 660 7859</a>
-                        </div>
-                    </div>
-
-                    <div class="contact-info-item">
-                        <div class="contact-info-icon">
-                            <i class="fa-solid fa-envelope"></i>
-                        </div>
-                        <div>
-                            <p class="contact-info-label">Correo</p>
-                            <a href="mailto:adminsublime@gmail.com" class="contact-info-value">adminsublime@gmail.com</a>
-                        </div>
-                    </div>
-
-                    <div class="contact-info-item">
-                        <div class="contact-info-icon">
-                            <i class="fa-brands fa-instagram"></i>
-                        </div>
-                        <div>
-                            <p class="contact-info-label">Instagram</p>
-                            <a href="https://www.instagram.com/sublimespf/" target="_blank" class="contact-info-value">@sublimespf</a>
-                        </div>
-                    </div>
-
-                    <div class="contact-info-item">
-                        <div class="contact-info-icon">
-                            <i class="fa-solid fa-clock"></i>
-                        </div>
-                        <div>
-                            <p class="contact-info-label">Horario de atención</p>
-                            <span class="contact-info-value">Lun – Sáb, 9:00 AM – 6:00 PM</span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Preguntas frecuentes -->
-            <div class="contact-card reveal">
-                <div class="contact-card-header">
-                    <i class="fa-solid fa-circle-question"></i>
-                    <h2>¿Preguntas frecuentes?</h2>
-                </div>
-                <p style="color: var(--text-muted); margin-bottom: 18px; font-size: 0.95rem; line-height: 1.65;">
-                    Antes de escribirnos, revisa nuestra sección de Ayuda donde respondemos las dudas más comunes sobre pedidos, pagos y personalización.
-                </p>
-                <a href="{{ url_for('ayuda') }}" class="contact-help-btn">
-                    <i class="fa-solid fa-book-open"></i> Ver Centro de Ayuda
-                </a>
-            </div>
-
-        </div>
+    <!-- Centro de ayuda -->
+    <div class="contact-card reveal" style="margin-top: 10px; text-align: center; padding: 36px 32px;">
+        <i class="fa-solid fa-circle-question" style="font-size: 2rem; color: var(--accent-color); margin-bottom: 14px; display: block;"></i>
+        <h2 style="font-size: 1.2rem; margin-bottom: 10px;">¿Tienes dudas frecuentes?</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.65; max-width: 500px; margin: 0 auto 22px;">
+            Antes de escribirnos, revisa nuestra sección de Ayuda donde respondemos las preguntas más comunes sobre pedidos, pagos y personalización.
+        </p>
+        <a href="{{ url_for('ayuda') }}" class="contact-help-btn">
+            <i class="fa-solid fa-book-open"></i> Ver Centro de Ayuda
+        </a>
     </div>
 
 </div>
