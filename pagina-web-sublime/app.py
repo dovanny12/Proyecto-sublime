@@ -2875,7 +2875,7 @@ def catalogo():
     conn = get_shared_db()
     db_cats = {row['nombre'] for row in conn.execute('SELECT nombre FROM categorias').fetchall()}
     conn.close()
-    order = CATEGORIES + ['Personalizado']
+    order = list(CATEGORIES)
     categorias_list = [c for c in order if c in db_cats]
     
     cart_count = len(load_cart_from_db()) if 'user_id' in session else len(session.get('cart', []))
