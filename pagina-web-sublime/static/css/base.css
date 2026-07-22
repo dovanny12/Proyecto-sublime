@@ -1029,3 +1029,30 @@ body.light-mode .footer-cols > div:last-child {
         font-size: 1.3rem;
     }
 }
+
+/* ── Social media: Próximamente tooltip ─────────────────────────── */
+.social-coming-soon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.social-coming-soon::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 20, 0.9);
+    color: #fff;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    padding: 4px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.social-coming-soon:hover::after {
+    opacity: 1;
+}
