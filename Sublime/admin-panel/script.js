@@ -3444,9 +3444,6 @@ async function generateReport() {
                 const cliente = (inv.cliente || 'Desconocido').replace(/,/g, ' ');
                 csv += `INV-${String(inv.id).padStart(3, '0')},${cliente},${fecha},${inv.items} producto(s),${totalUsd},${totalBs}\n`;
             });
-            const totalBsGen = (response.gran_total * rate).toFixed(2);
-            csv += `,,,,Total General ($),${response.gran_total.toFixed(2)}\n`;
-            csv += `,,,, Total General (Bs),${totalBsGen}\n`;
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
