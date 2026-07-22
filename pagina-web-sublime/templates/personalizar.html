@@ -16,20 +16,29 @@
 </div>
 
 <div class="studio-layout">
-    <!-- LEFT: 3D Preview -->
+    <!-- LEFT: Preview panel (2D mockup + 3D toggle) -->
         <div class="sticky-preview">
-            <h3 class="preview-header">ESTUDIO DE DISEÑO</h3>
-            <div class="mockup-container" id="mockupContainer">
+            <!-- View toggle -->
+            <div class="preview-view-toggle">
+                <button type="button" class="view-toggle-btn active" id="toggleMockup2D" onclick="switchView('2d')">
+                    <i class="fa-solid fa-pen-ruler"></i> Editor 2D
+                </button>
+                <button type="button" class="view-toggle-btn" id="toggle3D" onclick="switchView('3d')">
+                    <i class="fa-solid fa-cube"></i> Vista 3D
+                </button>
+            </div>
+
+            <!-- 2D Mockup canvas (primary editing view) -->
+            <div class="mockup2d-container" id="mockup2dContainer">
+                <canvas id="mockup2dCanvas"></canvas>
+                <div class="mockup2d-tip"><i class="fa-solid fa-hand-pointer"></i> Arrastra el texto o imagen directamente</div>
+            </div>
+
+            <!-- 3D container (secondary / presentation) -->
+            <div class="mockup-container" id="mockupContainer" style="display:none;">
                 <div id="threejs-canvas"></div>
-                <canvas id="textureCanvas" width="1024" height="1024"></canvas>
+                <canvas id="textureCanvas" width="2048" height="2048"></canvas>
                 <div class="preview-tip">Gira el producto con el ratón o pellizca para hacer zoom.</div>
-                <div class="texture-overlay" id="textureOverlay">
-                    <div class="texture-overlay-header">
-                        <span>ARRASTRA PARA MOVER / GIRAR</span>
-                        <span class="overlay-hint">cuerpo = mueve · círculo = gira</span>
-                    </div>
-                    <canvas id="texturePreview" width="512" height="512"></canvas>
-                </div>
                 <div id="previewError" class="preview-error">
                     <div class="preview-error-inner">
                         <div id="previewErrorMsg">Error cargando vista previa 3D.</div>
@@ -219,36 +228,21 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Position hint -->
-                        <div class="form-group" style="margin-top:18px;">
-                            <label class="field-label" for="placement">PLANTILLA DE POSICIÓN</label>
-                            <select class="select-field" name="placement" id="placement" onchange="updatePreview()">
-                                <option value="Centro Frontal">Centro Frontal</option>
-                                <option value="Pecho">Pecho Izq.</option>
-                                <option value="Espalda">Espalda</option>
-                            </select>
-                        </div>
-                        <!-- Image position -->
-                        <div class="form-group" id="imagePositionGroup" style="display:none;">
-                            <label class="field-label">POSICIÓN DE LA IMAGEN <span class="pos-hint">(arrastra / gira)</span></label>
-                            <div class="position-sliders">
-                                <div class="pos-row">
-                                    <span class="pos-label">X</span>
-                                    <input type="range" min="0" max="1" step="0.01" value="0.5" class="custom-range pos-range" id="imgPosX" oninput="updatePreview()">
-                                    <span class="pos-value" id="imgPosXVal">0.50</span>
-                                </div>
-                                <div class="pos-row">
-                                    <span class="pos-label">Y</span>
-                                    <input type="range" min="0" max="1" step="0.01" value="0.65" class="custom-range pos-range" id="imgPosY" oninput="updatePreview()">
-                                    <span class="pos-value" id="imgPosYVal">0.65</span>
-                                </div>
-                                <div class="pos-row">
-                                    <span class="pos-label">Giro</span>
-                                    <input type="range" min="-180" max="180" step="1" value="0" class="custom-range pos-range" id="imgRotate" oninput="updatePreview()">
-                                    <span class="pos-value" id="imgRotateVal">0°</span>
-                                </div>
+                        <!-- Image size -->
+                        <div class="form-group" id="imagePositionGroup" style="display:none; margin-top:18px;">
+                            <label class="field-label">TAMAÑO DE LA IMAGEN</label>
+                            <div class="pos-row">
+                                <span class="pos-label">Tam.</span>
+                                <input type="range" min="0.15" max="1.0" step="0.01" value="0.40" class="custom-range" id="imgScale" oninput="updatePreview()">
+                                <span class="pos-value" id="imgScaleVal">40%</span>
                             </div>
+                            <p class="field-note" style="margin-top:8px;"><i class="fa-solid fa-hand-pointer"></i> Arrastra la imagen directamente en el Editor 2D para moverla</p>
                         </div>
+                        <!-- hidden inputs for position (set by drag system) -->
+                        <input type="hidden" id="imgPosX" value="0.5">
+                        <input type="hidden" id="imgPosY" value="0.65">
+                        <input type="hidden" id="imgRotate" value="0">
+                        <input type="hidden" name="placement" id="placement" value="Centro Frontal">
                     </div>
 
                     <!-- PANEL 3: Texto -->
@@ -312,27 +306,34 @@
                                 <span id="textColorName" class="field-note">#000000</span>
                             </div>
                         </div>
-                        <!-- Text position -->
+                        <!-- Text position presets -->
                         <div class="form-group">
-                            <label class="field-label">POSICIÓN DEL TEXTO <span class="pos-hint">(arrastra / gira)</span></label>
-                            <div class="position-sliders">
-                                <div class="pos-row">
-                                    <span class="pos-label">X</span>
-                                    <input type="range" min="0" max="1" step="0.01" value="0.5" class="custom-range pos-range" id="textPosX" oninput="updatePreview()">
-                                    <span class="pos-value" id="textPosXVal">0.50</span>
-                                </div>
-                                <div class="pos-row">
-                                    <span class="pos-label">Y</span>
-                                    <input type="range" min="0" max="1" step="0.01" value="0.35" class="custom-range pos-range" id="textPosY" oninput="updatePreview()">
-                                    <span class="pos-value" id="textPosYVal">0.35</span>
-                                </div>
-                                <div class="pos-row">
-                                    <span class="pos-label">Giro</span>
-                                    <input type="range" min="-180" max="180" step="1" value="0" class="custom-range pos-range" id="textRotate" oninput="updatePreview()">
-                                    <span class="pos-value" id="textRotateVal">0°</span>
-                                </div>
+                            <label class="field-label">POSICIÓN DEL TEXTO</label>
+                            <div class="position-presets" id="textPositionPresets">
+                                <button type="button" class="pos-preset active" data-preset="center" onclick="applyTextPreset('center',this)">
+                                    <i class="fa-solid fa-align-center"></i>
+                                    <span>Centro</span>
+                                </button>
+                                <button type="button" class="pos-preset" data-preset="chest" onclick="applyTextPreset('chest',this)">
+                                    <i class="fa-solid fa-heart"></i>
+                                    <span>Pecho Izq.</span>
+                                </button>
+                                <button type="button" class="pos-preset" data-preset="top" onclick="applyTextPreset('top',this)">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                    <span>Arriba</span>
+                                </button>
+                                <button type="button" class="pos-preset" data-preset="bottom" onclick="applyTextPreset('bottom',this)">
+                                    <i class="fa-solid fa-arrow-down"></i>
+                                    <span>Abajo</span>
+                                </button>
                             </div>
+                            <p class="field-note" style="margin-top:8px;"><i class="fa-solid fa-hand-pointer"></i> También puedes arrastrar el texto en el Editor 2D
+                            </p>
                         </div>
+                        <!-- hidden inputs for text position (set by drag/preset) -->
+                        <input type="hidden" id="textPosX" value="0.5">
+                        <input type="hidden" id="textPosY" value="0.32">
+                        <input type="hidden" id="textRotate" value="0">
                     </div>
 
                     <!-- PANEL 4: Clipart -->
@@ -1193,8 +1194,8 @@ function updateCanvasTexture() {
     let imgNormY = parseFloat(imgPosYEl ? imgPosYEl.value : cfg.imgY);
     const textRotate = parseFloat(textRotateEl ? textRotateEl.value : 0);
     const imgRotate = parseFloat(imgRotateEl ? imgRotateEl.value : 0);
+    let imgScale = parseFloat((document.getElementById('imgScale') || {}).value || cfg.imgScale);
     let textScale = cfg.textScale;
-    let imgScale = cfg.imgScale;
 
     if (placement === 'Pecho') {
         textNormX = cfg.chestX;
@@ -1303,7 +1304,15 @@ function updateCanvasTexture() {
         texCtx.stroke();
     }
     
+    // Update imgScale label
+    const imgScaleEl = document.getElementById('imgScale');
+    const imgScaleValEl = document.getElementById('imgScaleVal');
+    if (imgScaleEl && imgScaleValEl) {
+        imgScaleValEl.textContent = Math.round(parseFloat(imgScaleEl.value) * 100) + '%';
+    }
+
     customTexture.needsUpdate = true;
+    drawMockup2D();
 
     const fallbackPrices = { 'franela': 20.00, 'short': 18.00, 'taza': 12.00, 'pen': 8.00, 'llavero': 5.00, 'filtro': 25.00, 'gorra': 15.00, 'mousepad': 10.00 };
     let base = fallbackPrices[productType] || 15.00;
@@ -1343,226 +1352,359 @@ function updateCanvasTexture() {
             .catch(() => {});
     }
 
-    // Copy to preview canvas for drag interaction
-    const previewCanvas = document.getElementById('texturePreview');
-    if (previewCanvas) {
-        const pCtx = previewCanvas.getContext('2d');
-        pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-        pCtx.drawImage(texCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
-        // Read current rotation values
-        const textRotEl = document.getElementById('textRotate');
-        const imgRotEl = document.getElementById('imgRotate');
-        const textRotDeg = parseFloat(textRotEl ? textRotEl.value : 0);
-        const imgRotDeg = parseFloat(imgRotEl ? imgRotEl.value : 0);
-        const handleLen = previewCanvas.width * 0.05;
-        // Draw crosshair and rotation handle at text position
-        const ptx = textNormX * previewCanvas.width;
-        const pty = textNormY * previewCanvas.height;
-        // Rotation handle line + circle
-        const trRad = textRotDeg * Math.PI / 180;
-        const hx = ptx + Math.sin(trRad) * handleLen;
-        const hy = pty - Math.cos(trRad) * handleLen;
-        pCtx.strokeStyle = 'rgba(0,255,100,0.9)';
-        pCtx.lineWidth = 2.5;
-        pCtx.beginPath();
-        pCtx.moveTo(ptx, pty);
-        pCtx.lineTo(hx, hy);
-        pCtx.stroke();
-        pCtx.fillStyle = 'rgba(0,255,100,0.9)';
-        pCtx.beginPath();
-        pCtx.arc(hx, hy, 6, 0, Math.PI * 2);
-        pCtx.fill();
-        // Position crosshair
-        pCtx.strokeStyle = 'rgba(0,255,100,0.5)';
-        pCtx.lineWidth = 1.5;
-        pCtx.beginPath();
-        pCtx.arc(ptx, pty, 8, 0, Math.PI * 2);
-        pCtx.stroke();
-        pCtx.beginPath();
-        pCtx.moveTo(ptx - 12, pty); pCtx.lineTo(ptx + 12, pty);
-        pCtx.moveTo(ptx, pty - 12); pCtx.lineTo(ptx, pty + 12);
-        pCtx.stroke();
-        // Draw image hit area and rotation handle if present
-        if (uploadedImage) {
-            const piw = Math.min(previewCanvas.width * 0.50 * imgScale, 150);
-            const pih = piw * (uploadedImage.height / uploadedImage.width);
-            const pix = imgNormX * previewCanvas.width;
-            const piy = imgNormY * previewCanvas.height;
-            // Image rotation handle
-            const irRad = imgRotDeg * Math.PI / 180;
-            const ihx = pix + Math.sin(irRad) * handleLen;
-            const ihy = piy - Math.cos(irRad) * handleLen;
-            pCtx.strokeStyle = 'rgba(255,200,0,0.9)';
-            pCtx.lineWidth = 2.5;
-            pCtx.beginPath();
-            pCtx.moveTo(pix, piy);
-            pCtx.lineTo(ihx, ihy);
-            pCtx.stroke();
-            pCtx.fillStyle = 'rgba(255,200,0,0.9)';
-            pCtx.beginPath();
-            pCtx.arc(ihx, ihy, 6, 0, Math.PI * 2);
-            pCtx.fill();
-            // Image hit box
-            pCtx.strokeStyle = 'rgba(255,200,0,0.5)';
-            pCtx.lineWidth = 1.5;
-            pCtx.setLineDash([5,4]);
-            pCtx.strokeRect(pix - piw/2, piy - pih/2, piw, pih);
-            pCtx.setLineDash([]);
-        }
+
+}
+
+// ════════════════════════════════════════════
+// 2D MOCKUP SYSTEM
+// ════════════════════════════════════════════
+const mockup2dCanvas = document.getElementById('mockup2dCanvas');
+const m2dCtx = mockup2dCanvas ? mockup2dCanvas.getContext('2d') : null;
+
+// Product silhouette shapes for the 2D mockup
+const productShapes = {
+    franela: (ctx, w, h) => {
+        const cx = w / 2, scale = Math.min(w, h) * 0.008;
+        ctx.beginPath();
+        // neck
+        ctx.moveTo(cx - 6*scale, 8*scale);
+        ctx.quadraticCurveTo(cx, 14*scale, cx + 6*scale, 8*scale);
+        // right shoulder
+        ctx.lineTo(cx + 20*scale, 4*scale);
+        // right sleeve end
+        ctx.lineTo(cx + 32*scale, 20*scale);
+        ctx.lineTo(cx + 26*scale, 22*scale);
+        // right armhole down
+        ctx.lineTo(cx + 20*scale, 10*scale);
+        // right body
+        ctx.lineTo(cx + 18*scale, 90*scale);
+        // bottom right
+        ctx.lineTo(cx + 18*scale, 92*scale);
+        ctx.lineTo(cx - 18*scale, 92*scale);
+        // left body
+        ctx.lineTo(cx - 18*scale, 10*scale);
+        // left armhole
+        ctx.lineTo(cx - 26*scale, 22*scale);
+        ctx.lineTo(cx - 32*scale, 20*scale);
+        ctx.lineTo(cx - 20*scale, 4*scale);
+        ctx.closePath();
+    },
+    taza: (ctx, w, h) => {
+        const cx = w/2, cy = h/2, rw = w*0.27, rh = h*0.38;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI*2);
+        ctx.moveTo(cx + rw, cy - rh*0.25);
+        ctx.quadraticCurveTo(cx + rw + w*0.18, cy, cx + rw, cy + rh*0.25);
+    },
+    gorra: (ctx, w, h) => {
+        const cx = w/2, top = h*0.22, mid = h*0.6;
+        ctx.beginPath();
+        ctx.arc(cx, mid, w*0.35, Math.PI, 0);
+        ctx.lineTo(cx + w*0.42, mid + h*0.06);
+        ctx.lineTo(cx - w*0.42, mid + h*0.06);
+        ctx.closePath();
+        // visor
+        ctx.moveTo(cx - w*0.28, mid + h*0.05);
+        ctx.quadraticCurveTo(cx, mid + h*0.22, cx + w*0.38, mid + h*0.05);
+    },
+    llavero: (ctx, w, h) => {
+        const cx = w/2, cy = h/2;
+        ctx.beginPath();
+        ctx.roundRect(cx - w*0.22, cy - h*0.3, w*0.44, h*0.6, [12]);
+    },
+    filtro: (ctx, w, h) => {
+        const cx = w/2, cy = h/2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, w*0.2, h*0.4, 0, 0, Math.PI*2);
+    },
+    pen: (ctx, w, h) => {
+        const cx = w/2, cy = h/2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, w*0.07, h*0.44, 0, 0, Math.PI*2);
+    },
+    mousepad: (ctx, w, h) => {
+        ctx.beginPath();
+        ctx.roundRect(w*0.08, h*0.2, w*0.84, h*0.6, [16]);
+    }
+};
+
+// Print zone for each product (normalized 0-1 within mockup)
+const printZones = {
+    franela:  { x: 0.30, y: 0.18, w: 0.40, h: 0.55 },
+    taza:     { x: 0.22, y: 0.25, w: 0.56, h: 0.50 },
+    gorra:    { x: 0.33, y: 0.15, w: 0.34, h: 0.38 },
+    llavero:  { x: 0.30, y: 0.18, w: 0.40, h: 0.60 },
+    filtro:   { x: 0.33, y: 0.18, w: 0.34, h: 0.60 },
+    pen:      { x: 0.38, y: 0.15, w: 0.24, h: 0.70 },
+    mousepad: { x: 0.15, y: 0.22, w: 0.70, h: 0.56 },
+    short:    { x: 0.28, y: 0.10, w: 0.44, h: 0.65 }
+};
+
+// Map text preset to normalized (x,y) per product
+const textPresets = {
+    center: (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.4 }),
+    chest:  (pz) => ({ x: pz.x + pz.w*0.25, y: pz.y + pz.h*0.2 }),
+    top:    (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.1 }),
+    bottom: (pz) => ({ x: pz.x + pz.w/2, y: pz.y + pz.h*0.8 })
+};
+
+function resizeMockup2D() {
+    if (!mockup2dCanvas) return;
+    const container = document.getElementById('mockup2dContainer');
+    if (!container) return;
+    const w = container.clientWidth || 400;
+    const h = Math.round(w * 0.9);
+    mockup2dCanvas.width = w;
+    mockup2dCanvas.height = h;
+    mockup2dCanvas.style.width = w + 'px';
+    mockup2dCanvas.style.height = h + 'px';
+    drawMockup2D();
+}
+
+function drawMockup2D() {
+    if (!m2dCtx || !mockup2dCanvas) return;
+    const W = mockup2dCanvas.width;
+    const H = mockup2dCanvas.height;
+    const productType = document.getElementById('product_type').value;
+    const baseColor = document.getElementById('product_color_picker').value;
+    const text = document.getElementById('custom_text').value || '';
+    const textColor = document.getElementById('text_color_picker').value;
+    const font = document.getElementById('font_style').value.split(',')[0].replace(/'/g, '').trim();
+    const textSize = parseFloat(document.getElementById('textSizeSlider').value);
+    const textNormX = parseFloat(document.getElementById('textPosX').value);
+    const textNormY = parseFloat(document.getElementById('textPosY').value);
+    const imgNormX = parseFloat(document.getElementById('imgPosX').value);
+    const imgNormY = parseFloat(document.getElementById('imgPosY').value);
+    const imgScaleVal = parseFloat((document.getElementById('imgScale') || {}).value || 0.4);
+
+    // Clear
+    m2dCtx.clearRect(0, 0, W, H);
+
+    // Background
+    m2dCtx.fillStyle = 'rgba(0,0,0,0)';
+    m2dCtx.fillRect(0, 0, W, H);
+
+    // Draw product silhouette
+    const shapeFn = productShapes[productType] || productShapes['franela'];
+    m2dCtx.save();
+    // Shadow for depth
+    m2dCtx.shadowColor = 'rgba(0,0,0,0.28)';
+    m2dCtx.shadowBlur = 24;
+    m2dCtx.shadowOffsetY = 8;
+    m2dCtx.fillStyle = baseColor;
+    shapeFn(m2dCtx, W, H);
+    m2dCtx.fill();
+    m2dCtx.shadowColor = 'transparent';
+    // Outline
+    m2dCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+    m2dCtx.lineWidth = 1.5;
+    m2dCtx.stroke();
+    m2dCtx.restore();
+
+    // Draw printable zone dashed border
+    const pz = printZones[productType] || printZones['franela'];
+    const pzX = pz.x * W, pzY = pz.y * H, pzW = pz.w * W, pzH = pz.h * H;
+    m2dCtx.save();
+    m2dCtx.setLineDash([5, 4]);
+    m2dCtx.strokeStyle = 'rgba(0,230,100,0.45)';
+    m2dCtx.lineWidth = 1.5;
+    m2dCtx.strokeRect(pzX, pzY, pzW, pzH);
+    m2dCtx.setLineDash([]);
+    m2dCtx.restore();
+
+    // Draw uploaded image
+    if (uploadedImage) {
+        const maxPx = Math.min(pzW, pzH) * imgScaleVal * 1.6;
+        const iw = maxPx;
+        const ih = iw * (uploadedImage.height / uploadedImage.width);
+        const ix = imgNormX * W;
+        const iy = imgNormY * H;
+        m2dCtx.save();
+        m2dCtx.imageSmoothingEnabled = true;
+        m2dCtx.imageSmoothingQuality = 'high';
+        m2dCtx.drawImage(uploadedImage, ix - iw/2, iy - ih/2, iw, ih);
+        // Selection indicator
+        m2dCtx.strokeStyle = 'rgba(0,230,100,0.8)';
+        m2dCtx.lineWidth = 2;
+        m2dCtx.setLineDash([4,3]);
+        m2dCtx.strokeRect(ix - iw/2 - 3, iy - ih/2 - 3, iw + 6, ih + 6);
+        m2dCtx.setLineDash([]);
+        // Drag handle
+        m2dCtx.fillStyle = 'rgba(0,230,100,0.9)';
+        m2dCtx.beginPath();
+        m2dCtx.arc(ix + iw/2, iy - ih/2, 7, 0, Math.PI*2);
+        m2dCtx.fill();
+        m2dCtx.restore();
+    }
+
+    // Draw clipart
+    if (selectedClipart) {
+        const cx2 = (pz.x + pz.w * 0.5) * W;
+        const cy2 = (pz.y + pz.h * 0.5) * H;
+        const emojiPx = Math.round(Math.min(pzW, pzH) * 0.35);
+        m2dCtx.font = emojiPx + 'px serif';
+        m2dCtx.textAlign = 'center';
+        m2dCtx.textBaseline = 'middle';
+        m2dCtx.fillText(selectedClipart, cx2, cy2);
+    }
+
+    // Draw text
+    if (text.trim()) {
+        const tx = textNormX * W;
+        const ty = textNormY * H;
+        const fontSize = Math.round(Math.min(pzW, pzH) * 0.1 * textSize);
+        m2dCtx.save();
+        m2dCtx.font = `bold ${fontSize}px ${font}, sans-serif`;
+        m2dCtx.textAlign = 'center';
+        m2dCtx.textBaseline = 'middle';
+        // Shadow for contrast against product color
+        m2dCtx.shadowColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.3)';
+        m2dCtx.shadowBlur = 6;
+        m2dCtx.fillStyle = textColor;
+        m2dCtx.fillText(text, tx, ty);
+        m2dCtx.shadowColor = 'transparent';
+        // Text drag handle
+        m2dCtx.strokeStyle = 'rgba(0,230,100,0.8)';
+        m2dCtx.lineWidth = 1.5;
+        m2dCtx.beginPath();
+        m2dCtx.arc(tx, ty, 10, 0, Math.PI*2);
+        m2dCtx.stroke();
+        m2dCtx.restore();
     }
 }
 
-// ── Drag on texture preview (move + rotate) ──
+function switchView(view) {
+    const c2d = document.getElementById('mockup2dContainer');
+    const c3d = document.getElementById('mockupContainer');
+    const btn2d = document.getElementById('toggleMockup2D');
+    const btn3d = document.getElementById('toggle3D');
+    if (view === '2d') {
+        c2d.style.display = '';
+        c3d.style.display = 'none';
+        btn2d.classList.add('active');
+        btn3d.classList.remove('active');
+        resizeMockup2D();
+    } else {
+        c3d.style.display = '';
+        c2d.style.display = 'none';
+        btn3d.classList.add('active');
+        btn2d.classList.remove('active');
+        resizeRenderer();
+        updateCanvasTexture();
+    }
+}
+
+function applyTextPreset(preset, btnEl) {
+    const productType = document.getElementById('product_type').value;
+    const pz = printZones[productType] || printZones['franela'];
+    const fn = textPresets[preset] || textPresets['center'];
+    const pos = fn(pz);
+    document.getElementById('textPosX').value = pos.x.toFixed(3);
+    document.getElementById('textPosY').value = pos.y.toFixed(3);
+    document.querySelectorAll('.pos-preset').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    updatePreview();
+}
+
+// ─── Drag & drop on 2D mockup ──────────────────────────
 (function() {
-    const previewCanvas = document.getElementById('texturePreview');
-    if (!previewCanvas) return;
-    let dragTarget = null; // 'text' or 'image'
-    let dragMode = 'move'; // 'move' or 'rotate'
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
-    const handleLen = previewCanvas.width * 0.05;
+    if (!mockup2dCanvas) return;
+    let drag = null; // 'text' or 'image'
+    let offX = 0, offY = 0;
 
-    function getPosFromEvent(e) {
-        const rect = previewCanvas.getBoundingClientRect();
-        const scaleX = previewCanvas.width / rect.width;
-        const scaleY = previewCanvas.height / rect.height;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    function clientToCanvas(e) {
+        const rect = mockup2dCanvas.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
         return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
+            x: (cx - rect.left) / rect.width,
+            y: (cy - rect.top) / rect.height
         };
     }
 
-    function getHandlePos(cx, cy, rotDeg) {
-        const rad = rotDeg * Math.PI / 180;
-        return {
-            x: cx + Math.sin(rad) * handleLen,
-            y: cy - Math.cos(rad) * handleLen
-        };
+    function hitTest(normX, normY, elNormX, elNormY, radius) {
+        const dx = normX - elNormX;
+        const dy = normY - elNormY;
+        return Math.sqrt(dx*dx + dy*dy) < radius;
     }
 
-    function startDrag(e) {
-        const pos = getPosFromEvent(e);
-        const productType = document.getElementById('product_type').value;
-        const cfg = productConfig[productType] || productConfig['franela'];
-        const textXEl = document.getElementById('textPosX');
-        const textYEl = document.getElementById('textPosY');
-        const textRotEl = document.getElementById('textRotate');
-        const imgXEl = document.getElementById('imgPosX');
-        const imgYEl = document.getElementById('imgPosY');
-        const imgRotEl = document.getElementById('imgRotate');
-        const placement = document.getElementById('placement').value;
-        if (placement === 'Pecho' || placement === 'Espalda') return;
+    mockup2dCanvas.addEventListener('mousedown', startDrag2D);
+    mockup2dCanvas.addEventListener('touchstart', startDrag2D, { passive: false });
+    window.addEventListener('mousemove', moveDrag2D);
+    window.addEventListener('touchmove', moveDrag2D, { passive: false });
+    window.addEventListener('mouseup', endDrag2D);
+    window.addEventListener('touchend', endDrag2D);
 
-        const tx = parseFloat(textXEl ? textXEl.value : cfg.textX) * previewCanvas.width;
-        const ty = parseFloat(textYEl ? textYEl.value : cfg.textY) * previewCanvas.height;
-        const tRot = parseFloat(textRotEl ? textRotEl.value : 0);
-        // Check text rotation handle hit first
-        const thp = getHandlePos(tx, ty, tRot);
-        if (Math.hypot(pos.x - thp.x, pos.y - thp.y) < 14) {
-            dragTarget = 'text';
-            dragMode = 'rotate';
-            previewCanvas.classList.add('dragging-text');
+    function startDrag2D(e) {
+        const pos = clientToCanvas(e);
+        const textNormX = parseFloat(document.getElementById('textPosX').value);
+        const textNormY = parseFloat(document.getElementById('textPosY').value);
+        const imgNormX = parseFloat(document.getElementById('imgPosX').value);
+        const imgNormY = parseFloat(document.getElementById('imgPosY').value);
+        const hitRadius = 0.08;
+
+        // Check text hit (circle around text position)
+        const text = (document.getElementById('custom_text').value || '').trim();
+        if (text && hitTest(pos.x, pos.y, textNormX, textNormY, hitRadius)) {
+            drag = 'text';
+            offX = pos.x - textNormX;
+            offY = pos.y - textNormY;
+            mockup2dCanvas.style.cursor = 'grabbing';
             e.preventDefault();
             return;
         }
-        // Check text body hit
-        if (Math.hypot(pos.x - tx, pos.y - ty) < 20) {
-            dragTarget = 'text';
-            dragMode = 'move';
-            dragOffsetX = pos.x - tx;
-            dragOffsetY = pos.y - ty;
-            previewCanvas.classList.add('dragging-text');
+        // Check image hit
+        if (uploadedImage && hitTest(pos.x, pos.y, imgNormX, imgNormY, hitRadius + 0.04)) {
+            drag = 'image';
+            offX = pos.x - imgNormX;
+            offY = pos.y - imgNormY;
+            mockup2dCanvas.style.cursor = 'grabbing';
             e.preventDefault();
-            return;
-        }
-        // Check image handle / body
-        if (uploadedImage && imgXEl && imgYEl) {
-            const ix = parseFloat(imgXEl.value) * previewCanvas.width;
-            const iy = parseFloat(imgYEl.value) * previewCanvas.height;
-            const iRot = parseFloat(imgRotEl ? imgRotEl.value : 0);
-            const ihp = getHandlePos(ix, iy, iRot);
-            if (Math.hypot(pos.x - ihp.x, pos.y - ihp.y) < 14) {
-                dragTarget = 'image';
-                dragMode = 'rotate';
-                previewCanvas.classList.add('dragging-image');
-                e.preventDefault();
-                return;
-            }
-            if (Math.hypot(pos.x - ix, pos.y - iy) < 20) {
-                dragTarget = 'image';
-                dragMode = 'move';
-                dragOffsetX = pos.x - ix;
-                dragOffsetY = pos.y - iy;
-                previewCanvas.classList.add('dragging-image');
-                e.preventDefault();
-            }
-        }
-        if (dragTarget) {
-            const ov = document.getElementById('textureOverlay');
-            if (ov) ov.classList.add('dragging-active');
         }
     }
 
-    function moveDrag(e) {
-        if (!dragTarget) return;
-        const pos = getPosFromEvent(e);
-        if (dragMode === 'move') {
-            const normX = Math.max(0, Math.min(1, (pos.x - dragOffsetX) / previewCanvas.width));
-            const normY = Math.max(0, Math.min(1, (pos.y - dragOffsetY) / previewCanvas.height));
-            if (dragTarget === 'text') {
-                const elX = document.getElementById('textPosX');
-                const elY = document.getElementById('textPosY');
-                if (elX) elX.value = normX;
-                if (elY) elY.value = normY;
-            } else if (dragTarget === 'image') {
-                const elX = document.getElementById('imgPosX');
-                const elY = document.getElementById('imgPosY');
-                if (elX) elX.value = normX;
-                if (elY) elY.value = normY;
-            }
+    function moveDrag2D(e) {
+        if (!drag) return;
+        const pos = clientToCanvas(e);
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+        const nx = clamp(pos.x - offX, 0.05, 0.95);
+        const ny = clamp(pos.y - offY, 0.05, 0.95);
+        if (drag === 'text') {
+            document.getElementById('textPosX').value = nx.toFixed(3);
+            document.getElementById('textPosY').value = ny.toFixed(3);
+            // Clear preset active state when user drags manually
+            document.querySelectorAll('.pos-preset').forEach(b => b.classList.remove('active'));
         } else {
-            // rotate mode
-            let cx, cy;
-            if (dragTarget === 'text') {
-                const elX = document.getElementById('textPosX');
-                const elY = document.getElementById('textPosY');
-                cx = parseFloat(elX ? elX.value : 0.5) * previewCanvas.width;
-                cy = parseFloat(elY ? elY.value : 0.35) * previewCanvas.height;
-            } else {
-                const elX = document.getElementById('imgPosX');
-                const elY = document.getElementById('imgPosY');
-                cx = parseFloat(elX ? elX.value : 0.5) * previewCanvas.width;
-                cy = parseFloat(elY ? elY.value : 0.65) * previewCanvas.height;
-            }
-            const dx = pos.x - cx;
-            const dy = pos.y - cy;
-            let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
-            deg = Math.round(Math.max(-180, Math.min(180, deg)));
-            const rotEl = document.getElementById(dragTarget === 'text' ? 'textRotate' : 'imgRotate');
-            if (rotEl) rotEl.value = deg;
+            document.getElementById('imgPosX').value = nx.toFixed(3);
+            document.getElementById('imgPosY').value = ny.toFixed(3);
         }
+        drawMockup2D();
         updateCanvasTexture();
         e.preventDefault();
     }
 
-    function endDrag() {
-        if (!dragTarget) return;
-        dragTarget = null;
-        dragMode = 'move';
-        previewCanvas.classList.remove('dragging-text', 'dragging-image');
-        const ov = document.getElementById('textureOverlay');
-        if (ov) ov.classList.remove('dragging-active');
+    function endDrag2D() {
+        drag = null;
+        if (mockup2dCanvas) mockup2dCanvas.style.cursor = 'grab';
     }
 
-    previewCanvas.addEventListener('mousedown', startDrag);
-    window.addEventListener('mousemove', moveDrag);
-    window.addEventListener('mouseup', endDrag);
-    previewCanvas.addEventListener('touchstart', startDrag, { passive: false });
-    window.addEventListener('touchmove', moveDrag, { passive: false });
-    window.addEventListener('touchend', endDrag);
+    // Hover cursor
+    mockup2dCanvas.addEventListener('mousemove', (e) => {
+        if (drag) return;
+        const pos = clientToCanvas(e);
+        const textNormX = parseFloat(document.getElementById('textPosX').value);
+        const textNormY = parseFloat(document.getElementById('textPosY').value);
+        const imgNormX = parseFloat(document.getElementById('imgPosX').value);
+        const imgNormY = parseFloat(document.getElementById('imgPosY').value);
+        const text = (document.getElementById('custom_text').value || '').trim();
+        let over = false;
+        if (text && hitTest(pos.x, pos.y, textNormX, textNormY, 0.08)) over = true;
+        if (uploadedImage && hitTest(pos.x, pos.y, imgNormX, imgNormY, 0.12)) over = true;
+        mockup2dCanvas.style.cursor = over ? 'grab' : 'default';
+    });
 })();
+
+
 
 function handleImage(input) {
     if (input.files && input.files[0]) {
@@ -1635,6 +1777,7 @@ function animate() {
 
 window.addEventListener('resize', () => {
     resizeRenderer();
+    resizeMockup2D();
 });
 
 const productData = {
@@ -1715,6 +1858,7 @@ function updateProductFields() {
         window.lastProductType = productType;
     }
     
+    applyTextPreset('center', null);
     update3DModel();
     updatePreview();
 }
@@ -1900,6 +2044,7 @@ document.getElementById('customForm').addEventListener('submit', function() {
 });
 
 updateProductFields();
+resizeMockup2D();
 init3D();
 </script>
 {% endblock %}
