@@ -5,7 +5,7 @@ import uuid
 import re
 import sqlite3
 import urllib.request
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory, Request
 from werkzeug.security import generate_password_hash, check_password_hash
 from urllib.parse import urlparse, urljoin
 from functools import wraps
@@ -14,10 +14,15 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from models import db, User, Product, Order
 
+class CustomRequest(Request):
+    max_form_memory_size = 15 * 1024 * 1024 # 15 MB limit for form fields (like base64 image strings)
+
 app = Flask(__name__)
+app.request_class = CustomRequest
 CORS(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"], storage_uri="memory://")
 app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_key_for_sublime')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max payload size
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 if os.environ.get('ENFORCE_HTTPS', '').lower() in ('1', 'true', 'yes'):
