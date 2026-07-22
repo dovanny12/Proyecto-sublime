@@ -1303,32 +1303,51 @@ def admin_create_invoice():
 
     conn = get_shared_db()
 
+    # Enrich items with official prices from DB and validate stock
+    enriched_items = []
     for item in items:
         pid = item.get('id')
-        if pid:
-            name_row = conn.execute('SELECT nombre FROM productos WHERE id_producto = ? LIMIT 1', (pid,)).fetchone()
-            if name_row and name_row['nombre'] and name_row['nombre'].startswith('Personalizado'):
-                continue
-            qty = int(item.get('quantity', 1))
+        if not pid:
+            continue
+        prod_row = conn.execute(
+            'SELECT p.nombre, p.descripcion, p.precio_venta, p.iva, '
+            'IFNULL(p.automatico, 0) AS automatico, c.nombre AS categoria '
+            'FROM productos p LEFT JOIN categorias c ON c.id_categoria = p.id_categoria '
+            'WHERE p.id_producto = ? LIMIT 1',
+            (pid,)
+        ).fetchone()
+        if not prod_row:
+            continue
+        # Solo los productos auto-generados (automatico=1) para pedidos online
+        # no tienen entrada en inventario. Los productos del tab "Personalizado"
+        # creados manualmente (automatico=0) sí deben descontar stock.
+        is_auto = bool(prod_row['automatico'])
+        qty = int(item.get('quantity', 1))
+        if not is_auto:
             valid, msg = validate_stock(conn, pid, qty)
             if not valid:
                 conn.close()
                 return jsonify({'message': msg}), 400
+        # Use official inventory price (precio_venta from DB)
+        official_price = float(prod_row['precio_venta']) if prod_row['precio_venta'] is not None else float(item.get('price', 0))
+        prod_iva = float(prod_row['iva']) if prod_row['iva'] is not None else 16.0
+        enriched_items.append({
+            'id': pid,
+            'quantity': qty,
+            'price': official_price,
+            'iva': prod_iva,
+            'nombre': prod_row['nombre'],
+            'descripcion': prod_row['descripcion'] or '',
+            'categoria': (prod_row['categoria'] or '').lower(),
+            'is_personalizado': is_auto  # True solo para auto-generados (sin inventario)
+        })
 
     subtotal = 0.0
     impuesto = 0.0
-    for item in items:
-        pid = item.get('id')
-        if pid:
-            qty = int(item.get('quantity', 1))
-            price = float(item.get('price', 0))
-            
-            prod = conn.execute('SELECT iva FROM productos WHERE id_producto = ? LIMIT 1', (pid,)).fetchone()
-            prod_iva = float(prod['iva']) if prod and prod['iva'] is not None else 16.0
-            
-            item_subtotal = price * qty
-            subtotal += item_subtotal
-            impuesto += item_subtotal * prod_iva / 100
+    for item in enriched_items:
+        item_subtotal = item['price'] * item['quantity']
+        subtotal += item_subtotal
+        impuesto += item_subtotal * item['iva'] / 100
 
     impuesto = round(impuesto, 2)
     total_con_iva = round(subtotal + impuesto, 2)
@@ -1339,19 +1358,45 @@ def admin_create_invoice():
         (cliente_id, total_con_iva)
     )
     venta_id = cursor.lastrowid
-    for item in items:
+    for item in enriched_items:
+        pid = item['id']
+        qty = item['quantity']
         conn.execute(
             'INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
-            (venta_id, item.get('id'), item.get('quantity', 1), item.get('price', 0))
+            (venta_id, pid, qty, item['price'])
         )
-        # Descontar stock para venta en fisico
-        pid = item.get('id')
-        if pid:
-            qty = int(item.get('quantity', 1))
+        if not item['is_personalizado']:
+            # Descontar stock del inventario para venta física
             conn.execute(
                 'UPDATE inventario SET stock_actual = MAX(0, stock_actual - ?) WHERE id_producto = ?',
                 (qty, pid)
             )
+            # Descontar materia prima según el tipo de producto
+            mat_cat = None
+            # 1. Intentar desde descripción (productos personalizados tienen tipo embebido)
+            tipo = parse_custom_product_type(item['descripcion'])
+            if tipo:
+                mat_cat = PRODUCT_TYPE_TO_MATERIA.get(tipo)
+            # 2. Si no, usar la categoría del producto mapeada a materia prima
+            if not mat_cat:
+                mat_cat = ADMIN_CAT_TO_MATERIA.get(item['categoria'])
+            # 3. Si todavía no, inferir del nombre del producto
+            if not mat_cat:
+                nombre_lower = (item['nombre'] or '').lower()
+                if 'franela' in nombre_lower or 'camisa' in nombre_lower:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get('franela')
+                elif 'taza' in nombre_lower or 'mug' in nombre_lower:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get('taza')
+                elif 'gorra' in nombre_lower:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get('gorra')
+                elif 'llavero' in nombre_lower:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get('llavero')
+                elif 'mousepad' in nombre_lower:
+                    mat_cat = PRODUCT_TYPE_TO_MATERIA.get('mousepad')
+            if mat_cat:
+                talla = extract_custom_product_size(item['descripcion']) if tipo == 'franela' else None
+                _consumir_materia_prima(conn, mat_cat, qty, talla)
+
     # Insertar en facturas con desglose de IVA
     conn.execute(
         'INSERT INTO facturas (id_venta, subtotal, porcentaje_iva, impuesto, total_usd) VALUES (?, ?, ?, ?, ?)',
@@ -1360,6 +1405,7 @@ def admin_create_invoice():
     conn.commit()
     conn.close()
     return jsonify({'message': 'Factura creada correctamente.', 'invoice_id': venta_id}), 201
+
 
 
 # ADMIN PANEL STATIC FILES Y ENDPOINTS
@@ -1668,7 +1714,7 @@ def api_clients():
 def api_invoices():
     conn = get_shared_db()
     invoices = conn.execute(
-        'SELECT v.id_venta AS id, c.nombre AS cliente, v.fecha, COUNT(d.id_detalle) AS items, IFNULL(v.total, 0) AS total '
+        'SELECT v.id_venta AS id, c.nombre AS cliente, v.fecha, IFNULL(SUM(d.cantidad), 0) AS items, IFNULL(v.total, 0) AS total '
         'FROM ventas v LEFT JOIN clientes c ON v.id_cliente = c.id_cliente '
         'LEFT JOIN detalle_ventas d ON d.id_venta = v.id_venta '
         'GROUP BY v.id_venta ORDER BY v.fecha DESC LIMIT 20'
@@ -1717,6 +1763,31 @@ def api_invoice_detail(invoice_id):
     return jsonify(invoice)
 
 
+@app.route('/api/invoices/delete', methods=['POST'])
+@admin_required
+def api_invoices_delete():
+    data = request.get_json() or {}
+    invoice_ids = data.get('invoice_ids', [])
+    if not invoice_ids or not isinstance(invoice_ids, list):
+        return jsonify({'message': 'No se enviaron IDs de facturas.'}), 400
+
+    conn = get_shared_db()
+    try:
+        for inv_id in invoice_ids:
+            conn.execute('DELETE FROM facturas WHERE id_venta = ?', (inv_id,))
+            conn.execute('DELETE FROM detalle_ventas WHERE id_venta = ?', (inv_id,))
+            conn.execute('DELETE FROM ventas WHERE id_venta = ?', (inv_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'message': f'Error al eliminar facturas: {str(e)}'}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'message': f'🗑 {len(invoice_ids)} factura(s) eliminada(s) correctamente.'})
+
+
 @app.route('/api/report', methods=['POST'])
 @admin_required
 def api_report():
@@ -1732,7 +1803,7 @@ def api_report():
 
     conn = get_shared_db()
     invoices = conn.execute(
-        f'SELECT v.id_venta AS id, c.nombre AS cliente, v.fecha, COUNT(d.id_detalle) AS items, IFNULL(v.total, 0) AS total '
+        f'SELECT v.id_venta AS id, c.nombre AS cliente, v.fecha, IFNULL(SUM(d.cantidad), 0) AS items, IFNULL(v.total, 0) AS total '
         f'FROM ventas v LEFT JOIN clientes c ON v.id_cliente = c.id_cliente '
         f'LEFT JOIN detalle_ventas d ON d.id_venta = v.id_venta '
         f'{where} '

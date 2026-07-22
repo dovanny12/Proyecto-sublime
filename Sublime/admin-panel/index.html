@@ -13,6 +13,12 @@
 
     <style>
         @media print {
+            /* Suppress browser default header/footer (URL, title) */
+            @page {
+                margin: 0;
+                size: A4;
+            }
+
             body * {
                 visibility: hidden;
             }
@@ -28,19 +34,52 @@
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: #fff;
+                background: #fff !important;
                 z-index: 999999;
+                display: block;
+                overflow: visible;
+            }
+
+            #invoiceModal.active .invoice-content {
+                width: 100%;
+                max-width: 100%;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                border: none !important;
+                background: #fff !important;
+                color: #1a1a2e !important;
             }
 
             #invoiceModal.active .invoice-actions {
                 display: none !important;
             }
 
-            #invoiceModal.active .invoice-content {
-                max-width: 100%;
-                box-shadow: none;
-                border-radius: 0;
-                padding: 20px;
+            /* Force colors for print */
+            #invoiceModal.active .inv-header-band {
+                background: #1a1a2e !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 20px 30px;
+            }
+
+            #invoiceModal.active #invoiceContainer {
+                padding: 0 30px 20px;
+            }
+
+            #invoiceModal.active .inv-table thead tr {
+                background: #1a1a2e !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            #invoiceModal.active .inv-table thead th {
+                color: #fff !important;
+            }
+
+            #invoiceModal.active .inv-grand-total {
+                background: #f0fdf4 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .sidebar,
@@ -48,10 +87,6 @@
             .page-section,
             .invoice-modal:not(.active) {
                 display: none !important;
-            }
-
-            @page {
-                margin: 10mm;
             }
         }
     </style>
@@ -647,8 +682,30 @@
 
                 </div>
 
-                <div class="filter-row">
-                    <input type="search" placeholder="Buscar por número o cliente..." />
+                <div class="orders-filter-bar">
+                    <div class="orders-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" id="invoicesSearchInput" placeholder="Buscar por número o cliente..." />
+                    </div>
+                    <button class="btn-select-orders" id="selectAllInvoicesBtn" title="Seleccionar varias facturas">
+                        <i class="fa-regular fa-square-check"></i> Seleccionar
+                    </button>
+                </div>
+
+                <!-- Bulk actions bar -->
+                <div class="orders-bulk-actions" id="invoicesBulkActions" style="display: none;">
+                    <div class="bulk-info">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <span><span id="selectedInvoicesCount">0</span> facturas seleccionadas</span>
+                    </div>
+                    <div class="bulk-btns">
+                        <button class="bulk-btn-cancel" id="cancelInvoicesBulkBtn">
+                            <i class="fa-solid fa-xmark"></i> Cancelar
+                        </button>
+                        <button class="bulk-btn-delete" id="deleteSelectedInvoicesBtn">
+                            <i class="fa-solid fa-trash"></i> Eliminar Seleccionadas
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-card">
@@ -657,6 +714,7 @@
 
                         <thead>
                             <tr>
+                                <th style="width:36px;"><input type="checkbox" id="invoicesSelectAllCheckbox" title="Seleccionar todas"></th>
                                 <th>N° Factura</th>
                                 <th>Cliente</th>
                                 <th>Fecha</th>
@@ -668,12 +726,23 @@
 
                         <tbody id="invoicesTableBody">
                             <tr>
-                                <td colspan="6">Cargando facturas...</td>
+                                <td colspan="7">Cargando facturas...</td>
                             </tr>
                         </tbody>
 
                     </table>
 
+                </div>
+
+                <!-- Pagination -->
+                <div class="invoices-pagination" id="invoicesPagination" style="display:none;">
+                    <button class="invoices-page-btn" id="invoicesPrevBtn" disabled>
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span id="invoicesPageInfo">Página 1 de 1</span>
+                    <button class="invoices-page-btn" id="invoicesNextBtn">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
 
             </section>
@@ -1849,89 +1918,88 @@
 
         <div class="invoice-content">
 
+            <!-- ── Invoice Document ── -->
             <div id="invoiceContainer">
 
-                <div class="invoice-header">
-
-                    <div>
-                        <h1 class="brand">SUBLIME</h1>
-                        <p>Sistema de Ventas</p>
+                <!-- Header band -->
+                <div class="inv-header-band">
+                    <div class="inv-brand">
+                        <img src="../static/images/full_logo.png" alt="Sublime" class="inv-logo" id="invLogoImg"
+                             onerror="this.style.display='none';document.getElementById('invBrandText').style.display='block'">
+                        <span id="invBrandText" class="inv-brand-text" style="display:none">SUBLIME</span>
+                        <span class="inv-brand-sub">Sistema de Ventas</span>
                     </div>
-
-                    <div class="invoice-title">
-                        <h1>FACTURA</h1>
-                        <p id="invoiceNumber">INV-001</p>
+                    <div class="inv-title-block">
+                        <div class="inv-title-label">FACTURA</div>
+                        <div class="inv-number" id="invoiceNumber">INV-001</div>
                     </div>
-
                 </div>
 
-                <div class="invoice-info">
-
-                    <div>
-                        <h3>Facturado a:</h3>
-                        <p id="invoiceClient">Cliente</p>
+                <!-- Meta row -->
+                <div class="inv-meta-row">
+                    <div class="inv-meta-card">
+                        <div class="inv-meta-label"><i class="fa-solid fa-circle-user"></i> Facturado a</div>
+                        <div class="inv-meta-value" id="invoiceClient">—</div>
                     </div>
-
-                    <div>
-                        <h3>Fecha:</h3>
-                        <p id="invoiceDate">01/01/2026</p>
+                    <div class="inv-meta-card inv-meta-right">
+                        <div class="inv-meta-label"><i class="fa-regular fa-calendar"></i> Fecha de emisión</div>
+                        <div class="inv-meta-value" id="invoiceDate">—</div>
                     </div>
-
                 </div>
 
-                <table class="invoice-table">
+                <!-- Divider -->
+                <div class="inv-divider"></div>
 
+                <!-- Products table -->
+                <table class="inv-table">
                     <thead>
                         <tr>
                             <th>Producto</th>
-                            <th>Cantidad</th>
-                            <th>Precio Unit.</th>
-                            <th>Total</th>
+                            <th class="inv-col-num">Cant.</th>
+                            <th class="inv-col-num">Precio Unit.</th>
+                            <th class="inv-col-num">Subtotal</th>
                         </tr>
                     </thead>
-
                     <tbody id="invoiceItems">
                     </tbody>
-
                 </table>
 
-                <div class="invoice-sumanry">
-                    <p>
-                        Subtotal:
+                <!-- Totals -->
+                <div class="inv-totals">
+                    <div class="inv-totals-row">
+                        <span>Subtotal</span>
                         <span id="invoiceSubtotal">$0.00</span>
-                    </p>
-                    <p>
-                        IVA:
+                    </div>
+                    <div class="inv-totals-row">
+                        <span>IVA</span>
                         <span id="invoiceIVA">$0.00</span>
-                    </p>
-                    <h3>
-                        Total:
+                    </div>
+                    <div class="inv-totals-row inv-grand-total">
+                        <span>Total</span>
                         <span id="invoiceTotal">$0.00</span>
-                    </h3>
+                    </div>
+                </div>
+
+                <!-- Footer note -->
+                <div class="inv-doc-footer">
+                    <i class="fa-solid fa-circle-check"></i>
+                    Documento generado por el sistema Sublime — gracias por su preferencia.
                 </div>
 
             </div>
+            <!-- ── End Invoice Document ── -->
 
+            <!-- Action bar -->
             <div class="invoice-actions">
-
                 <button id="downloadInvoiceBtn">
-
-                    Descargar
-
+                    <i class="fa-solid fa-file-arrow-down"></i> Descargar PDF
                 </button>
-
                 <button id="printInvoiceBtn">
-
-                    Imprimir
-
+                    <i class="fa-solid fa-print"></i> Imprimir
                 </button>
-
                 <button id="closeInvoiceBtn">
-
-                    Cerrar
-
+                    <i class="fa-solid fa-xmark"></i> Cerrar
                 </button>
-
             </div>
 
         </div>

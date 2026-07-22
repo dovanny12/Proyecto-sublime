@@ -1454,54 +1454,111 @@ async function deliverOrder(orderId) {
    FACTURAS
 ========================= */
 
+let allInvoices = [];
+let selectedInvoiceIds = [];
+let invoicesCurrentPage = 1;
+const INVOICES_PER_PAGE = 10;
+
+function updateInvoicesBulkActionsBar() {
+    const bar = document.getElementById('invoicesBulkActions');
+    const countEl = document.getElementById('selectedInvoicesCount');
+    if (!bar) return;
+    if (selectedInvoiceIds.length > 0) {
+        bar.style.display = 'flex';
+        if (countEl) countEl.textContent = selectedInvoiceIds.length;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function renderInvoices() {
+    const body = document.getElementById('invoicesTableBody');
+    if (!body) return;
+
+    const query = (document.getElementById('invoicesSearchInput')?.value || '').toLowerCase().trim();
+
+    let filtered = allInvoices;
+    if (query) {
+        filtered = filtered.filter(inv =>
+            String(inv.id).includes(query) ||
+            (inv.cliente || '').toLowerCase().includes(query)
+        );
+    }
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / INVOICES_PER_PAGE));
+    if (invoicesCurrentPage > totalPages) invoicesCurrentPage = totalPages;
+
+    const pagination = document.getElementById('invoicesPagination');
+    const pageInfo = document.getElementById('invoicesPageInfo');
+    const prevBtn = document.getElementById('invoicesPrevBtn');
+    const nextBtn = document.getElementById('invoicesNextBtn');
+
+    if (pagination) pagination.style.display = filtered.length > INVOICES_PER_PAGE ? 'flex' : 'none';
+    if (pageInfo) pageInfo.textContent = `Página ${invoicesCurrentPage} de ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = invoicesCurrentPage <= 1;
+    if (nextBtn) nextBtn.disabled = invoicesCurrentPage >= totalPages;
+
+    const start = (invoicesCurrentPage - 1) * INVOICES_PER_PAGE;
+    const page = filtered.slice(start, start + INVOICES_PER_PAGE);
+
+    if (page.length === 0) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">${allInvoices.length === 0 ? 'No hay facturas registradas.' : 'Sin resultados para tu búsqueda.'}</td></tr>`;
+        return;
+    }
+
+    body.innerHTML = page.map(invoice => `
+        <tr>
+            <td>
+                <input type="checkbox" class="invoice-select-checkbox" data-id="${invoice.id}" ${selectedInvoiceIds.includes(invoice.id) ? 'checked' : ''}>
+            </td>
+            <td>INV-${String(invoice.id).padStart(3, '0')}</td>
+            <td>${invoice.cliente || 'Cliente desconocido'}</td>
+            <td>${new Date(invoice.fecha).toLocaleDateString('es-VE')}</td>
+            <td>${invoice.items} producto(s)</td>
+            <td>${formatCurrency(invoice.total)}</td>
+            <td>
+                <button
+                    class="btn-view-invoice"
+                    onclick="openInvoiceModal(${invoice.id})">
+                    <i class="fa-solid fa-file-invoice"></i> Ver Detalle
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    /* Attach checkbox listeners */
+    body.querySelectorAll('.invoice-select-checkbox').forEach(cb => {
+        cb.addEventListener('change', e => {
+            const invId = parseInt(e.target.dataset.id);
+            if (e.target.checked) {
+                if (!selectedInvoiceIds.includes(invId)) selectedInvoiceIds.push(invId);
+            } else {
+                selectedInvoiceIds = selectedInvoiceIds.filter(id => id !== invId);
+            }
+            /* Sync header checkbox */
+            const allCbs = Array.from(body.querySelectorAll('.invoice-select-checkbox'));
+            const allChecked = allCbs.length > 0 && allCbs.every(c => c.checked);
+            const headerCb = document.getElementById('invoicesSelectAllCheckbox');
+            if (headerCb) headerCb.checked = allChecked;
+            updateInvoicesBulkActionsBar();
+        });
+    });
+
+    /* Sync header checkbox state */
+    const allCbs = Array.from(body.querySelectorAll('.invoice-select-checkbox'));
+    const allChecked = allCbs.length > 0 && allCbs.every(c => selectedInvoiceIds.includes(parseInt(c.dataset.id)));
+    const headerCb = document.getElementById('invoicesSelectAllCheckbox');
+    if (headerCb) headerCb.checked = allChecked;
+}
+
 async function loadInvoices() {
 
     try {
 
         const response = await apiRequest('invoices');
-
-        const body = document.getElementById(
-            'invoicesTableBody'
-        );
-
-        if (!body) return;
-
-        body.innerHTML = response.invoices.map(invoice => `
-
-            <tr>
-
-                <td>
-                    INV-${String(invoice.id).padStart(3, '0')}
-                </td>
-
-                <td>
-                    ${invoice.cliente || 'Cliente desconocido'}
-                </td>
-
-                <td>
-                    ${new Date(invoice.fecha)
-                .toLocaleDateString('es-VE')}
-                </td>
-
-                <td>
-                    ${invoice.items} producto(s)
-                </td>
-
-                <td>
-                    ${formatCurrency(invoice.total)}
-                </td>
-
-                <td>
-                    <button 
-                        class="btn-view-invoice"
-                        onclick="openInvoiceModal(${invoice.id})">
-                        <i class="fa-solid fa-file-invoice"></i> Ver Detalle
-                    </button>
-                </td>
-
-            </tr>
-
-        `).join('');
+        allInvoices = response.invoices || [];
+        invoicesCurrentPage = 1;
+        renderInvoices();
 
     } catch (error) {
 
@@ -1899,6 +1956,108 @@ window.addEventListener('DOMContentLoaded', async () => {
             } catch (error) {
                 showToast('Error al eliminar pedidos: ' + error.message, 'error');
             }
+        });
+    }
+
+    /* ── Invoices: delete selected ── */
+    const deleteInvBtn = document.getElementById('deleteSelectedInvoicesBtn');
+    if (deleteInvBtn) {
+        deleteInvBtn.addEventListener('click', async () => {
+            if (selectedInvoiceIds.length === 0) return;
+            if (!confirm(`¿Estás seguro de eliminar ${selectedInvoiceIds.length} factura(s)? Esta acción es irreversible.`)) return;
+            try {
+                const response = await apiRequest('invoices/delete', {
+                    method: 'POST',
+                    body: { invoice_ids: selectedInvoiceIds }
+                });
+                showToast(response.message || '🗑 Facturas eliminadas correctamente.', 'success');
+                selectedInvoiceIds = [];
+                updateInvoicesBulkActionsBar();
+                await loadInvoices();
+            } catch (error) {
+                showToast('Error al eliminar facturas: ' + error.message, 'error');
+            }
+        });
+    }
+
+    /* ── Invoices: cancel bulk selection ── */
+    const cancelInvBulkBtn = document.getElementById('cancelInvoicesBulkBtn');
+    if (cancelInvBulkBtn) {
+        cancelInvBulkBtn.addEventListener('click', () => {
+            selectedInvoiceIds = [];
+            document.querySelectorAll('.invoice-select-checkbox').forEach(cb => cb.checked = false);
+            const headerCb = document.getElementById('invoicesSelectAllCheckbox');
+            if (headerCb) headerCb.checked = false;
+            updateInvoicesBulkActionsBar();
+        });
+    }
+
+    /* ── Invoices: header checkbox (select all on page) ── */
+    const invHeaderCb = document.getElementById('invoicesSelectAllCheckbox');
+    if (invHeaderCb) {
+        invHeaderCb.addEventListener('change', () => {
+            const checkboxes = Array.from(document.querySelectorAll('.invoice-select-checkbox'));
+            checkboxes.forEach(cb => {
+                const id = parseInt(cb.dataset.id);
+                cb.checked = invHeaderCb.checked;
+                if (invHeaderCb.checked) {
+                    if (!selectedInvoiceIds.includes(id)) selectedInvoiceIds.push(id);
+                } else {
+                    selectedInvoiceIds = selectedInvoiceIds.filter(x => x !== id);
+                }
+            });
+            updateInvoicesBulkActionsBar();
+        });
+    }
+
+    /* ── Invoices: select button (toggle all visible) ── */
+    const selectInvBtn = document.getElementById('selectAllInvoicesBtn');
+    if (selectInvBtn) {
+        selectInvBtn.addEventListener('click', () => {
+            const checkboxes = Array.from(document.querySelectorAll('.invoice-select-checkbox'));
+            if (!checkboxes.length) return;
+            const allChecked = checkboxes.every(cb => cb.checked);
+            checkboxes.forEach(cb => {
+                const id = parseInt(cb.dataset.id);
+                if (allChecked) {
+                    cb.checked = false;
+                    selectedInvoiceIds = selectedInvoiceIds.filter(x => x !== id);
+                } else {
+                    cb.checked = true;
+                    if (!selectedInvoiceIds.includes(id)) selectedInvoiceIds.push(id);
+                }
+            });
+            const headerCb = document.getElementById('invoicesSelectAllCheckbox');
+            if (headerCb) headerCb.checked = !allChecked;
+            selectInvBtn.classList.toggle('active', !allChecked);
+            updateInvoicesBulkActionsBar();
+        });
+    }
+
+    /* ── Invoices: search input ── */
+    const invSearchInput = document.getElementById('invoicesSearchInput');
+    if (invSearchInput) {
+        invSearchInput.addEventListener('input', () => {
+            invoicesCurrentPage = 1;
+            renderInvoices();
+        });
+    }
+
+    /* ── Invoices: pagination ── */
+    const invPrevBtn = document.getElementById('invoicesPrevBtn');
+    const invNextBtn = document.getElementById('invoicesNextBtn');
+    if (invPrevBtn) {
+        invPrevBtn.addEventListener('click', () => {
+            if (invoicesCurrentPage > 1) {
+                invoicesCurrentPage--;
+                renderInvoices();
+            }
+        });
+    }
+    if (invNextBtn) {
+        invNextBtn.addEventListener('click', () => {
+            invoicesCurrentPage++;
+            renderInvoices();
         });
     }
 
@@ -3275,13 +3434,19 @@ async function generateReport() {
         const typeLabels = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual', custom: 'Personalizado' };
 
         if (format === 'excel') {
-            let csv = 'N° Factura,Cliente,Fecha,Items,Total\n';
+            const rate = window.usdRate || 40;
+            let csv = 'N\u00b0 Factura,Cliente,Fecha,Items,Total ($),Total (Bs)\n';
             response.invoices.forEach(inv => {
                 const fecha = new Date(inv.fecha).toLocaleDateString('es-VE');
-                const total = (inv.total || 0).toFixed(2);
-                csv += `INV-${String(inv.id).padStart(3, '0')},${inv.cliente || 'Desconocido'},${fecha},${inv.items} producto(s),${total}\n`;
+                const totalUsd = (inv.total || 0).toFixed(2);
+                const totalBs = ((inv.total || 0) * rate).toFixed(2);
+                // Escape commas in client name
+                const cliente = (inv.cliente || 'Desconocido').replace(/,/g, ' ');
+                csv += `INV-${String(inv.id).padStart(3, '0')},${cliente},${fecha},${inv.items} producto(s),${totalUsd},${totalBs}\n`;
             });
-            csv += `,,,,Total General,${response.gran_total.toFixed(2)}\n`;
+            const totalBsGen = (response.gran_total * rate).toFixed(2);
+            csv += `,,,,Total General ($),${response.gran_total.toFixed(2)}\n`;
+            csv += `,,,, Total General (Bs),${totalBsGen}\n`;
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -3290,63 +3455,149 @@ async function generateReport() {
             link.click();
             showToast('Reporte Excel descargado.', 'success');
         } else {
+            const rate = window.usdRate || 40;
+
+            // Load logo as base64 for embedding in PDF
+            const logoSrc = '../static/images/logo_verde.png';
+            let logoHtmlReport = `<span style="font-size:26pt;font-weight:900;color:#00ff80;letter-spacing:4px;">SUBLIME</span>`;
+            try {
+                const logoData = await new Promise((res) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        const c = document.createElement('canvas');
+                        c.width = img.naturalWidth; c.height = img.naturalHeight;
+                        c.getContext('2d').drawImage(img, 0, 0);
+                        res(c.toDataURL('image/png'));
+                    };
+                    img.onerror = () => res(null);
+                    img.src = logoSrc;
+                });
+                if (logoData) {
+                    logoHtmlReport = `<img src="${logoData}" alt="Sublime" style="height:52px;width:auto;object-fit:contain;">`;
+                }
+            } catch(_) {}
+
             let html = `
-            <html>
-            <head><title>Reporte ${typeLabels[type]} - Sublime</title>
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+            <meta charset="UTF-8">
+            <title>Reporte ${typeLabels[type]} \u2014 Sublime</title>
             <style>
-                body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a1a2e; }
-                h1 { font-size: 2rem; margin-bottom: 5px; }
-                .sub { color: #888; margin-bottom: 5px; }
-                .periodo { color: #888; margin-bottom: 30px; font-size: 0.9rem; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th { background: #1a1a2e; color: #fff; padding: 12px; text-align: left; }
-                td { padding: 12px; border-bottom: 1px solid #eee; }
-                tr:hover { background: #f5f5f5; }
-                .resumen { margin-top: 25px; display: flex; gap: 30px; justify-content: flex-end; font-size: 1rem; }
-                .resumen div { text-align: right; }
-                .resumen .label { color: #888; font-size: 0.85rem; }
-                .resumen .value { font-size: 1.3rem; font-weight: 900; }
-                .footer { margin-top: 30px; color: #888; font-size: 0.85rem; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
+                * { margin:0; padding:0; box-sizing:border-box; }
+                @page { margin:0; size:A4; }
+                body { font-family:'Helvetica Neue','Helvetica','Arial',sans-serif; background:#fff; color:#1a1a2e;
+                       -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+                .header-band { display:flex; justify-content:space-between; align-items:center;
+                    background:linear-gradient(135deg,#0d1117 0%,#1a2332 60%,#0f2818 100%);
+                    padding:22px 30px; }
+                .brand-sub { font-size:7pt; color:rgba(255,255,255,0.45); letter-spacing:1.5px;
+                             text-transform:uppercase; margin-top:5px; }
+                .report-title { text-align:right; }
+                .report-title h2 { font-size:14pt; color:#fff; font-weight:800; }
+                .report-title p { font-size:8pt; color:rgba(255,255,255,0.55); margin-top:4px; }
+                .body { padding:24px 30px 30px; }
+                .meta { display:flex; gap:30px; margin-bottom:22px; }
+                .meta-item { }
+                .meta-item .mlabel { font-size:7pt; color:#888; text-transform:uppercase; letter-spacing:1px; }
+                .meta-item .mvalue { font-size:10pt; font-weight:700; color:#1a1a2e; }
+                table { width:100%; border-collapse:collapse; margin-top:4px; font-size:9pt; }
+                thead tr { background:#1a1a2e; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+                thead th { color:#fff; padding:10px 12px; text-align:left; font-weight:700; font-size:8.5pt; }
+                tbody td { padding:9px 12px; border-bottom:1px solid #eee; }
+                tbody tr:nth-child(even) { background:#f8fafb; }
+                .totals { margin-top:22px; display:flex; gap:24px; justify-content:flex-end; }
+                .total-box { background:#f0fdf4; border:1.5px solid #10b981; border-radius:10px;
+                             padding:12px 22px; text-align:right; }
+                .total-box .tlabel { font-size:7.5pt; color:#059669; text-transform:uppercase;
+                                     letter-spacing:1px; margin-bottom:4px; }
+                .total-box .tvalue { font-size:14pt; font-weight:900; color:#064e3b; }
+                .total-box .tvalue-bs { font-size:9pt; color:#6b7280; margin-top:2px; }
+                .count-box { background:#f0f4ff; border:1.5px solid #4f8cff; border-radius:10px;
+                             padding:12px 22px; text-align:right; }
+                .count-box .tlabel { font-size:7.5pt; color:#3b5bdb; text-transform:uppercase;
+                                     letter-spacing:1px; margin-bottom:4px; }
+                .count-box .tvalue { font-size:14pt; font-weight:900; color:#1a1a2e; }
+                .footer { margin-top:24px; border-top:1px solid #ddd; padding-top:14px;
+                          font-size:7.5pt; color:#999; text-align:center; }
+                @media print {
+                    .no-print { display:none !important; }
+                }
             </style>
             </head>
             <body>
-                <h1>Reporte ${typeLabels[type]}</h1>
-                <p class="sub">Sublime - Sistema de Ventas</p>
-                <p class="periodo">Período: ${new Date(dateFrom).toLocaleDateString('es-VE')} - ${new Date(dateTo).toLocaleDateString('es-VE')}</p>
-                <table>
-                    <thead>
-                        <tr><th>N° Factura</th><th>Cliente</th><th>Fecha</th><th>Items</th><th>Total</th></tr>
-                    </thead>
-                    <tbody>
+                <div class="header-band">
+                    <div>
+                        ${logoHtmlReport}
+                        <div class="brand-sub">Sistema de Ventas</div>
+                    </div>
+                    <div class="report-title">
+                        <h2>Reporte ${typeLabels[type]}</h2>
+                        <p>Per\u00edodo: ${new Date(dateFrom + 'T12:00:00').toLocaleDateString('es-VE')} \u2014 ${new Date(dateTo + 'T12:00:00').toLocaleDateString('es-VE')}</p>
+                    </div>
+                </div>
+                <div class="body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N\u00b0 Factura</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Items</th>
+                                <th>Total ($)</th>
+                                <th>Total (Bs)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             response.invoices.forEach(inv => {
+                const totalBs = ((inv.total || 0) * rate).toFixed(2);
                 html += `
                     <tr>
                         <td>INV-${String(inv.id).padStart(3, '0')}</td>
                         <td>${inv.cliente || 'Desconocido'}</td>
                         <td>${new Date(inv.fecha).toLocaleDateString('es-VE')}</td>
                         <td>${inv.items} producto(s)</td>
-                        <td>${formatCurrency(inv.total)}</td>
+                        <td>$${Number(inv.total || 0).toFixed(2)}</td>
+                        <td>Bs ${totalBs}</td>
                     </tr>
                 `;
             });
 
+            const granTotalBs = (response.gran_total * rate).toFixed(2);
             html += `
-                    </tbody>
-                </table>
-                <div class="resumen">
-                    <div><span class="label">Facturas</span><br><span class="value">${response.count}</span></div>
-                    <div><span class="label">Total General</span><br><span class="value">${formatCurrency(response.gran_total)}</span></div>
+                        </tbody>
+                    </table>
+                    <div class="totals">
+                        <div class="count-box">
+                            <div class="tlabel">Facturas</div>
+                            <div class="tvalue">${response.count}</div>
+                        </div>
+                        <div class="total-box">
+                            <div class="tlabel">Total General</div>
+                            <div class="tvalue">$${response.gran_total.toFixed(2)}</div>
+                            <div class="tvalue-bs">Bs ${granTotalBs}</div>
+                        </div>
+                    </div>
+                    <div class="footer">Reporte generado el ${new Date().toLocaleString('es-VE')} &nbsp;|&nbsp; Sublime &copy; ${new Date().getFullYear()}</div>
                 </div>
-                <div class="footer">Reporte generado el ${new Date().toLocaleString('es-VE')}</div>
+                <script>
+                    window.onload = function() {
+                        window.focus();
+                        window.print();
+                    };
+                <\/script>
             </body>
             </html>
             `;
 
             const win = window.open('', '_blank');
-            win.document.write(html);
-            win.document.close();
+            if (win) {
+                win.document.write(html);
+                win.document.close();
+            }
         }
     } catch (error) {
         showToast(error.message, 'error');
@@ -3367,68 +3618,139 @@ if (closeInvoiceBtn) {
 
 }
 
-function buildInvoiceHTML() {
+function getLogoDataUrl() {
+    return new Promise((resolve) => {
+        const img = document.querySelector('.inv-logo, .sidebar-logo-img');
+        if (!img || !img.src || img.style.display === 'none') { resolve(null); return; }
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width || 200;
+            canvas.height = img.naturalHeight || img.height || 60;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+            // CORS fallback — just use null
+            resolve(null);
+        }
+    });
+}
+
+async function buildInvoiceHTML(autoPrint = false) {
     const invoice = {
-        number: document.getElementById('invoiceNumber').textContent,
-        client: document.getElementById('invoiceClient').textContent,
-        date: document.getElementById('invoiceDate').textContent,
-        total: document.getElementById('invoiceTotal').textContent,
+        number: document.getElementById('invoiceNumber').textContent.trim(),
+        client: document.getElementById('invoiceClient').textContent.trim(),
+        date: document.getElementById('invoiceDate').textContent.trim(),
+        subtotal: document.getElementById('invoiceSubtotal').textContent.trim(),
+        iva: document.getElementById('invoiceIVA').textContent.trim(),
+        total: document.getElementById('invoiceTotal').textContent.trim(),
         items: []
     };
     document.querySelectorAll('#invoiceItems tr').forEach(tr => {
         const tds = tr.querySelectorAll('td');
         if (tds.length === 4) {
             invoice.items.push({
-                producto: tds[0].textContent,
-                cantidad: tds[1].textContent,
-                precio: tds[2].textContent,
-                total: tds[3].textContent
+                producto: tds[0].textContent.trim(),
+                cantidad: tds[1].textContent.trim(),
+                precio:   tds[2].textContent.trim(),
+                total:    tds[3].textContent.trim()
             });
         }
     });
+
+    const logoDataUrl = await getLogoDataUrl();
+    const logoHtml = logoDataUrl
+        ? `<img src="${logoDataUrl}" alt="Sublime" style="height:40px;width:auto;object-fit:contain;">`
+        : `<span style="font-size:22pt;font-weight:900;color:#00ff80;letter-spacing:4px;">SUBLIME</span>`;
+
     const rows = invoice.items.map((item, i) => {
-        const bg = i % 2 === 0 ? ' style="background:#f5f5f5"' : '';
-        return `<tr${bg}><td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:9pt">${item.producto}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:9pt">${item.cantidad}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:9pt">${item.precio}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:9pt">${item.total}</td></tr>`;
+        const bg = i % 2 === 0 ? 'background:#f8fafb' : 'background:#fff';
+        return `<tr style="${bg}">
+            <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:9.5pt">${item.producto}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:9.5pt;text-align:right">${item.cantidad}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:9.5pt;text-align:right">${item.precio}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-size:9.5pt;text-align:right;font-weight:600">${item.total}</td>
+        </tr>`;
     }).join('');
 
+    const autoScript = autoPrint
+        ? `<script>window.onload=function(){window.focus();window.print();window.onafterprint=function(){window.close();}}<\/script>`
+        : '';
+
     return `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>${invoice.number} - Sublime</title>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>${invoice.number} — Sublime</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica','Arial',sans-serif;padding:40px;color:#1a1a2e}
-.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:0.5pt solid #1a1a2e;padding-bottom:15px;margin-bottom:18px}
-.brand{font-size:24pt;font-weight:700;letter-spacing:3px}
-.brand small{font-size:10pt;font-weight:400;color:#888;letter-spacing:0}
-.title{text-align:right}
-.title h1{font-size:18pt;font-weight:700;margin:0}
-.title p{font-size:12pt;color:#888}
-.info{display:flex;justify-content:space-between;margin-bottom:18px}
-.info div h3{font-size:9pt;font-weight:700;color:#888;margin-bottom:2px}
-.info div p{font-size:11pt;font-weight:400;margin:0}
-table{width:100%;border-collapse:collapse;margin-bottom:10px}
-th{padding:5px 8px;background:#1a1a2e;color:#fff;font-size:9pt;font-weight:700;text-align:left}
-.total{text-align:right;font-size:13pt;font-weight:700;padding-top:8px;border-top:0.5pt solid #1a1a2e}
-.footer{position:fixed;bottom:10px;left:0;width:100%;text-align:center;color:#888;font-size:8pt;border-top:0.3pt solid #ddd;padding-top:10px}
-@media print{body{padding:20px}}
-@page{margin:10mm}
+@page{margin:0;size:A4}
+body{font-family:'Helvetica Neue','Helvetica','Arial',sans-serif;background:#fff;color:#1a1a2e;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.wrapper{padding:10mm 14mm 14mm}
+.header-band{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#0d1117 0%,#1a2332 60%,#0f2818 100%);padding:18px 22px;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-radius:0 0 0 0}
+.brand-sub{font-size:7pt;color:rgba(255,255,255,0.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+.inv-title{text-align:right}
+.inv-title-label{font-size:6pt;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:4px;text-transform:uppercase;margin-bottom:3px}
+.inv-number{font-size:17pt;font-weight:900;color:#00ff80;letter-spacing:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.gradient-bar{height:3px;background:linear-gradient(90deg,#00ff80,#00b3ff 50%,transparent);opacity:0.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.meta-row{display:flex;border-bottom:1px solid #e8ecf0}
+.meta-cell{flex:1;padding:14px 20px;border-right:1px solid #e8ecf0}
+.meta-cell:last-child{border-right:none;text-align:right}
+.meta-label{font-size:6.5pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.meta-value{font-size:10.5pt;font-weight:700;color:#1a1a2e}
+table{width:100%;border-collapse:collapse;margin-top:0}
+thead tr{background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+th{padding:9px 12px;font-size:7pt;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid #e8ecf0;text-align:left}
+th:not(:first-child){text-align:right}
+.totals{padding:12px 20px 4px;border-top:1px solid #e8ecf0}
+.tot-row{display:flex;justify-content:space-between;padding:5px 10px;font-size:9.5pt;color:#64748b}
+.grand-total{display:flex;justify-content:space-between;padding:10px 12px;font-size:12pt;font-weight:800;color:#1a1a2e;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-top:6px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.grand-total-amt{color:#00b350;font-size:13pt}
+.doc-footer{text-align:center;padding:14px 20px 16px;font-size:7pt;color:#94a3b8;border-top:1px dashed #e2e8f0;margin-top:10px}
 </style>
+${autoScript}
 </head>
 <body>
-<div class="header">
-<div class="brand">SUBLIME <small>Sistema de Ventas</small></div>
-<div class="title"><h1>FACTURA</h1><p>${invoice.number}</p></div>
+<div class="wrapper">
+  <div class="header-band">
+    <div>
+      ${logoHtml}
+      <div class="brand-sub">Sistema de Ventas</div>
+    </div>
+    <div class="inv-title">
+      <div class="inv-title-label">Factura</div>
+      <div class="inv-number">${invoice.number}</div>
+    </div>
+  </div>
+  <div class="gradient-bar"></div>
+  <div class="meta-row">
+    <div class="meta-cell">
+      <div class="meta-label">&#128100; Facturado a</div>
+      <div class="meta-value">${invoice.client}</div>
+    </div>
+    <div class="meta-cell">
+      <div class="meta-label">&#128197; Fecha de emisión</div>
+      <div class="meta-value">${invoice.date}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:42%">Producto</th>
+      <th style="width:12%;text-align:right">Cant.</th>
+      <th style="width:22%;text-align:right">Precio Unit.</th>
+      <th style="width:24%;text-align:right">Subtotal</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="totals">
+    <div class="tot-row"><span>Subtotal</span><span>${invoice.subtotal}</span></div>
+    <div class="tot-row"><span>IVA</span><span>${invoice.iva}</span></div>
+    <div class="grand-total"><span>Total</span><span class="grand-total-amt">${invoice.total}</span></div>
+  </div>
+  <div class="doc-footer">
+    ✓ Documento generado el ${new Date().toLocaleString('es-VE')} — Sublime, Sistema de Ventas
+  </div>
 </div>
-<div class="info">
-<div><h3>Facturado a:</h3><p>${invoice.client}</p></div>
-<div><h3>Fecha:</h3><p>${invoice.date}</p></div>
-</div>
-<table>
-<thead><tr><th style="width:40%">Producto</th><th style="width:15%">Cantidad</th><th style="width:20%">Precio Unit.</th><th style="width:25%">Total</th></tr></thead>
-<tbody>${rows}</tbody>
-</table>
-<div class="total">Total: ${invoice.total}</div>
-<div class="footer">Factura generada el ${new Date().toLocaleString('es-VE')}</div>
 </body>
 </html>`;
 }
@@ -3445,156 +3767,203 @@ document
         let y = margin;
 
         const invoice = {
-            number: document.getElementById('invoiceNumber').textContent,
-            client: document.getElementById('invoiceClient').textContent,
-            date: document.getElementById('invoiceDate').textContent,
-            total: document.getElementById('invoiceTotal').textContent,
+            number: document.getElementById('invoiceNumber').textContent.trim(),
+            client: document.getElementById('invoiceClient').textContent.trim(),
+            date: document.getElementById('invoiceDate').textContent.trim(),
+            subtotal: document.getElementById('invoiceSubtotal').textContent.trim(),
+            iva: document.getElementById('invoiceIVA').textContent.trim(),
+            total: document.getElementById('invoiceTotal').textContent.trim(),
             items: []
         };
         document.querySelectorAll('#invoiceItems tr').forEach(tr => {
             const tds = tr.querySelectorAll('td');
             if (tds.length === 4) {
                 invoice.items.push({
-                    producto: tds[0].textContent,
-                    cantidad: tds[1].textContent,
-                    precio: tds[2].textContent,
-                    total: tds[3].textContent
+                    producto: tds[0].textContent.trim(),
+                    cantidad: tds[1].textContent.trim(),
+                    precio:   tds[2].textContent.trim(),
+                    total:    tds[3].textContent.trim()
                 });
             }
         });
 
-        // Header with Logo
-        const logoImg = document.querySelector('.sidebar-logo-img');
-        if (logoImg) {
+        // ── Header band ──
+        doc.setFillColor(13, 17, 23);
+        doc.rect(0, 0, pageW, 30, 'F');
+
+        // Logo or text
+        const logoImg = document.querySelector('.inv-logo, .sidebar-logo-img');
+        if (logoImg && logoImg.src && logoImg.style.display !== 'none') {
             try {
-                doc.addImage(logoImg, 'PNG', margin, y, 45, 12);
+                doc.addImage(logoImg, 'PNG', margin, 8, 50, 13);
             } catch (e) {
-                console.error("Error adding logo to Invoice:", e);
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(24);
-                doc.text('SUBLIME', margin, y);
+                doc.setFontSize(18);
+                doc.setTextColor(0, 255, 128);
+                doc.text('SUBLIME', margin, 18);
             }
         } else {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(24);
-            doc.text('SUBLIME', margin, y);
+            doc.setFontSize(18);
+            doc.setTextColor(0, 255, 128);
+            doc.text('SUBLIME', margin, 18);
         }
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text('Sistema de Ventas', margin, y + 17);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 160, 170);
+        doc.text('SISTEMA DE VENTAS', margin, 25);
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18);
-        const titleW = doc.getTextWidth('FACTURA');
-        doc.text('FACTURA', pageW - margin - titleW, y);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 160, 170);
+        const facLabel = 'FACTURA';
+        doc.text(facLabel, pageW - margin - doc.getTextWidth(facLabel), 14);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 255, 128);
         const numW = doc.getTextWidth(invoice.number);
-        doc.text(invoice.number, pageW - margin - numW, y + 6);
+        doc.text(invoice.number, pageW - margin - numW, 23);
 
-        y += 24;
-        doc.setDrawColor(26, 26, 46);
-        doc.setLineWidth(0.5);
-        doc.line(margin, y, pageW - margin, y);
-        y += 10;
+        y = 34;
 
-        // Info
+        // Gradient accent line (simulate with green rect)
+        doc.setFillColor(0, 179, 80);
+        doc.rect(0, 30, pageW * 0.5, 1.5, 'F');
+        doc.setFillColor(0, 100, 200);
+        doc.rect(pageW * 0.5, 30, pageW * 0.3, 1.5, 'F');
+
+        // ── Meta row ──
+        doc.setTextColor(100, 116, 139);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text('Facturado a:', margin, y);
+        doc.setFontSize(7);
+        doc.text('FACTURADO A', margin, y + 4);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
-        doc.text(invoice.client, margin, y + 5);
+        doc.setTextColor(26, 26, 46);
+        doc.text(invoice.client, margin, y + 10);
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        const dateLabelW = doc.getTextWidth('Fecha:');
-        doc.text('Fecha:', pageW - margin - 50, y);
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        const dateLabel = 'FECHA DE EMISIÓN';
+        doc.text(dateLabel, pageW - margin - doc.getTextWidth(dateLabel), y + 4);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
-        doc.text(invoice.date, pageW - margin - 50, y + 5);
+        doc.setTextColor(26, 26, 46);
+        const dateW = doc.getTextWidth(invoice.date);
+        doc.text(invoice.date, pageW - margin - dateW, y + 10);
 
         y += 18;
+        doc.setDrawColor(220, 225, 230);
+        doc.setLineWidth(0.3);
+        doc.line(margin, y, pageW - margin, y);
+        y += 6;
 
-        // Table header
+        // ── Table header ──
         const cols = [
-            { label: 'Producto', x: margin, w: usableW * 0.4 },
-            { label: 'Cantidad', x: margin + usableW * 0.4, w: usableW * 0.15 },
-            { label: 'Precio Unit.', x: margin + usableW * 0.55, w: usableW * 0.2 },
-            { label: 'Total', x: margin + usableW * 0.75, w: usableW * 0.25 }
+            { label: 'Producto',    x: margin,                    w: usableW * 0.42 },
+            { label: 'Cant.',       x: margin + usableW * 0.42,   w: usableW * 0.12 },
+            { label: 'Precio Unit.',x: margin + usableW * 0.54,   w: usableW * 0.22 },
+            { label: 'Subtotal',    x: margin + usableW * 0.76,   w: usableW * 0.24 }
         ];
 
-        doc.setFillColor(26, 26, 46);
+        doc.setFillColor(241, 245, 249);
         doc.rect(margin, y, usableW, 8, 'F');
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(100, 116, 139);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        cols.forEach(c => doc.text(c.label, c.x + 2, y + 5.5));
+        doc.setFontSize(7.5);
+        cols.forEach((c, i) => {
+            const lbl = c.label;
+            if (i === 0) {
+                doc.text(lbl, c.x + 2, y + 5.5);
+            } else {
+                const lw = doc.getTextWidth(lbl);
+                doc.text(lbl, c.x + c.w - lw - 2, y + 5.5);
+            }
+        });
         y += 8;
 
-        // Table rows
-        doc.setTextColor(26, 26, 46);
+        // ── Table rows ──
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         invoice.items.forEach((item, i) => {
             if (i % 2 === 0) {
-                doc.setFillColor(245, 245, 245);
+                doc.setFillColor(248, 250, 252);
                 doc.rect(margin, y, usableW, 7, 'F');
             }
-            doc.text(item.producto, cols[0].x + 2, y + 5);
-            doc.text(item.cantidad, cols[1].x + 2, y + 5);
-            doc.text(item.precio, cols[2].x + 2, y + 5);
-            doc.text(item.total, cols[3].x + 2, y + 5);
+            doc.setTextColor(26, 26, 46);
+            doc.text(String(item.producto).substring(0, 40), cols[0].x + 2, y + 5);
+            const cW = doc.getTextWidth(String(item.cantidad));
+            doc.text(String(item.cantidad), cols[1].x + cols[1].w - cW - 2, y + 5);
+            const pW = doc.getTextWidth(String(item.precio));
+            doc.text(String(item.precio), cols[2].x + cols[2].w - pW - 2, y + 5);
+            const tW = doc.getTextWidth(String(item.total));
+            doc.setFont('helvetica', 'bold');
+            doc.text(String(item.total), cols[3].x + cols[3].w - tW - 2, y + 5);
+            doc.setFont('helvetica', 'normal');
             y += 7;
         });
 
-        // Total line
+        // ── Totals ──
         y += 3;
-        doc.setDrawColor(26, 26, 46);
-        doc.setLineWidth(0.5);
-        doc.line(margin, y, pageW - margin, y);
+        doc.setDrawColor(220, 225, 230);
+        doc.setLineWidth(0.3);
+        doc.line(margin + usableW * 0.55, y, pageW - margin, y);
         y += 5;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        const totalLabel = 'Total: ' + invoice.total;
-        const totalW = doc.getTextWidth(totalLabel);
-        doc.text(totalLabel, pageW - margin - totalW, y);
 
-        // Responsable info
-        y += 12;
-        doc.setFont('helvetica', 'normal');
+        const totRows = [
+            { label: 'Subtotal', val: invoice.subtotal },
+            { label: 'IVA',      val: invoice.iva }
+        ];
         doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139);
-        doc.text('Responsable: Comunidad Ezequiel Zamora', margin, y);
+        totRows.forEach(row => {
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            doc.text(row.label, pageW - margin - 50, y);
+            const vw = doc.getTextWidth(row.val);
+            doc.setTextColor(26, 26, 46);
+            doc.text(row.val, pageW - margin - vw, y);
+            y += 6;
+        });
 
-        // Footer
-        y = 277;
-        doc.setDrawColor(221, 221, 221);
+        // Grand total box
+        y += 2;
+        doc.setFillColor(240, 253, 244);
+        doc.rect(pageW - margin - 65, y - 4, 65, 11, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(26, 26, 46);
+        doc.text('Total', pageW - margin - 62, y + 4);
+        doc.setTextColor(0, 180, 80);
+        const totalW2 = doc.getTextWidth(invoice.total);
+        doc.text(invoice.total, pageW - margin - totalW2, y + 4);
+
+        // ── Footer ──
+        y = 275;
+        doc.setDrawColor(220, 225, 230);
         doc.setLineWidth(0.3);
         doc.line(margin, y, pageW - margin, y);
-        doc.setTextColor(136, 136, 136);
+        doc.setTextColor(148, 163, 184);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        const footerText = 'Factura generada el ' + new Date().toLocaleString('es-VE');
+        doc.setFontSize(7.5);
+        const footerText = `Factura generada el ${new Date().toLocaleString('es-VE')} — Sublime, Sistema de Ventas`;
         const footerW = doc.getTextWidth(footerText);
         doc.text(footerText, (pageW - footerW) / 2, y + 5);
 
         doc.save(invoice.number + '.pdf');
-
     });
 
 document
     .getElementById('printInvoiceBtn')
-    .addEventListener('click', () => {
-
-        const html = buildInvoiceHTML();
+    .addEventListener('click', async () => {
+        const html = await buildInvoiceHTML(true);
         const win = window.open('about:blank', '_blank');
+        if (!win) { showToast('Activa los popups para imprimir.', 'error'); return; }
         win.document.write(html);
         win.document.close();
-        setTimeout(() => { win.focus(); win.print(); }, 300);
-
     });
+
 
 window.openEditClient = async function (id) {
 
