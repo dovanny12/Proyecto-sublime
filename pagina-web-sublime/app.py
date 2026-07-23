@@ -3108,7 +3108,7 @@ def checkout():
 
         # Compose address from new fields
         if shipping_method == 'tienda':
-            address = 'Retiro en Tienda — Av. Principal, Local 5, CC La Cascada, Caracas'
+            address = 'Retiro en Tienda — Ezequiel Zamora, Bloque 1, Callejón, 4 casa sin número'
         else:
             parts = []
             if empresa_envio: parts.append(empresa_envio)
