@@ -1,4 +1,12 @@
 /* Authentication page styles */
+
+/* Contenedor compacto y centrado */
+.auth-container {
+    max-width: 480px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
 @keyframes float {
     0% { transform: translateY(0px) rotate(0deg); }
     50% { transform: translateY(-8px) rotate(3deg); }
